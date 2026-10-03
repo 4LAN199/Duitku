@@ -858,7 +858,7 @@
 
             const selectedType = document.querySelector('input[name="type"]:checked');
             if (!selectedType) {
-                alert('Pilih jenis transaksi terlebih dahulu.');
+                showPopup('warning', 'Jenis transaksi belum dipilih', 'Silakan pilih pemasukan atau pengeluaran terlebih dahulu.');
                 return;
             }
 
@@ -896,9 +896,10 @@
                 document.getElementById('amount').value = '';
                 document.getElementById('description').value = '';
                 document.getElementById('date').valueAsDate = new Date();
+                showPopup('success', 'Transaksi berhasil', type === 'income' ? 'Pemasukan berhasil ditambahkan.' : 'Pengeluaran berhasil ditambahkan.');
             } catch (error) {
                 console.error(error);
-                alert('Transaksi gagal disimpan. Periksa Firestore Rules dan koneksi internet.');
+                showPopup('error', 'Transaksi gagal', 'Transaksi tidak dapat disimpan. Periksa koneksi internet atau Firestore Rules.');
             }
         }
 
@@ -908,6 +909,7 @@
 
             try {
                 await deleteDoc(doc(db, 'transactions', id));
+                showPopup('success', 'Transaksi dihapus', 'Transaksi berhasil dihapus.');
             } catch (error) {
                 console.error(error);
                 showPopup('error', 'Gagal menghapus', 'Transaksi tidak dapat dihapus.');
