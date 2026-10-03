@@ -98,18 +98,33 @@
             <h1 class="text-2xl font-bold text-slate-800">Duitku</h1>
             <p class="text-sm text-slate-500 mt-1">Pencatatan Keuangan Pribadi</p>
 
-            <div class="mt-6 text-left">
-                <label for="loginPassword" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
-                    Masukkan Sandi
-                </label>
-                <input
-                    type="password"
-                    id="loginPassword"
-                    placeholder="Sandi"
-                    autocomplete="off"
-                    onkeydown="if(event.key==='Enter') login()"
-                    class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
-                >
+            <div class="mt-6 text-left space-y-3">
+                <div>
+                    <label for="loginEmail" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+                        Email
+                    </label>
+                    <input
+                        type="email"
+                        id="loginEmail"
+                        placeholder="contoh@email.com"
+                        autocomplete="username"
+                        onkeydown="if(event.key==='Enter') document.getElementById('loginPassword').focus()"
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
+                    >
+                </div>
+                <div>
+                    <label for="loginPassword" class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+                        Sandi
+                    </label>
+                    <input
+                        type="password"
+                        id="loginPassword"
+                        placeholder="Sandi"
+                        autocomplete="current-password"
+                        onkeydown="if(event.key==='Enter') login()"
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
+                    >
+                </div>
             </div>
 
             <button
@@ -192,7 +207,7 @@
                 <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
                     <i class="fa-solid fa-circle-plus text-indigo-600"></i> Tambah Transaksi
                 </h3>
-                <form id="transactionForm" class="edit-only-field" data-edit-only="true" onsubmit="addTransaction(event)" class="space-y-4">
+                <form id="transactionForm" class="edit-only-field space-y-4" data-edit-only="true" onsubmit="addTransaction(event)">
                     <div>
                         <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Jenis Transaksi</label>
                         <div class="grid grid-cols-2 gap-2">
@@ -303,60 +318,206 @@
         &copy; 2026 Duitku. Dibuat dengan modern Tailwind CSS & Chart.js.
     </footer>
 
-    <script>
+    <script type="module">
+        // Firebase Web SDK via CDN. Firebase documents browser-module CDN imports as a simple setup
+        // for sites that do not use a build tool.
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
+        import {
+            getAuth,
+            signInWithEmailAndPassword,
+            onAuthStateChanged,
+            signOut
+        } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+        import {
+            getFirestore,
+            collection,
+            doc,
+            getDoc,
+            addDoc,
+            deleteDoc,
+            getDocs,
+            onSnapshot,
+            query,
+            orderBy,
+            serverTimestamp,
+            writeBatch
+        } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
-        // Login offline sederhana.
-        // Penonton = 123, Pengedit = 12345, Admin = 12341234.
-        const VIEWER_PASSWORD = '123';
-        const EDITOR_PASSWORD = '12345';
-        const ADMIN_PASSWORD = '12341234';
+        const firebaseConfig = {
+            apiKey: "AIzaSyCHVCxO6gwtmwK8WUHfS4Om_KecEQvGgWM",
+            authDomain: "alan-agb.firebaseapp.com",
+            projectId: "alan-agb",
+            storageBucket: "alan-agb.firebasestorage.app",
+            messagingSenderId: "298678037243",
+            appId: "1:298678037243:web:fbd42f9f517189d9889e5e",
+            measurementId: "G-SCWBF8P3S4"
+        };
 
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Kategori transaksi
+        const categoriesMap = {
+            income: ['Gaji', 'Bonus', 'Penjualan', 'Hadiah', 'Lainnya'],
+            expense: ['Makanan', 'Transport', 'Belanja', 'Hiburan', 'Lainnya']
+        };
+
+        let transactions = [];
         let currentRole = null;
+        let currentUser = null;
+        let unsubscribeTransactions = null;
+        let expenseChartInstance = null;
 
-        function login() {
+        // =========================
+        // Firebase Authentication
+        // =========================
+        async function login() {
+            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
             const password = document.getElementById('loginPassword').value;
             const message = document.getElementById('loginMessage');
+            const button = document.querySelector('#loginScreen button[onclick="login()"]');
 
-            if (password === ADMIN_PASSWORD) {
-                currentRole = 'admin';
-            } else if (password === EDITOR_PASSWORD) {
-                currentRole = 'editor';
-            } else if (password === VIEWER_PASSWORD) {
-                currentRole = 'viewer';
-            } else {
-                message.textContent = 'Sandi salah. Silakan coba lagi.';
-                document.getElementById('loginPassword').select();
+            message.textContent = '';
+
+            if (!email || !password) {
+                message.textContent = 'Email dan sandi wajib diisi.';
                 return;
             }
 
-            message.textContent = '';
-            document.getElementById('loginPassword').value = '';
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.body.classList.toggle('viewer-mode', currentRole === 'viewer');
-            applyRolePermissions();
-            enforceEditorFields();
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Memproses...';
+            }
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // onAuthStateChanged akan mengambil role dari Firestore dan membuka aplikasi.
+            } catch (error) {
+                console.error(error);
+                if (error.code === 'auth/invalid-credential') {
+                    message.textContent = 'Email atau sandi salah.';
+                } else if (error.code === 'auth/too-many-requests') {
+                    message.textContent = 'Terlalu banyak percobaan. Coba lagi nanti.';
+                } else {
+                    message.textContent = 'Login gagal. Periksa koneksi internet dan data akun.';
+                }
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = '<i class="fa-solid fa-right-to-bracket mr-1"></i> Masuk';
+                }
+            }
         }
 
-        function logout() {
-            currentRole = null;
-            document.body.classList.remove('viewer-mode');
-            document.getElementById('loginScreen').classList.remove('hidden');
-            document.getElementById('loginPassword').value = '';
-            document.getElementById('loginMessage').textContent = '';
-            document.getElementById('loginPassword').focus();
+        async function logout() {
+            try {
+                if (unsubscribeTransactions) {
+                    unsubscribeTransactions();
+                    unsubscribeTransactions = null;
+                }
+                await signOut(auth);
+            } catch (error) {
+                console.error(error);
+            }
         }
 
+        async function loadCurrentUserRole(user) {
+            const email = (user.email || '').toLowerCase();
+            const userRef = doc(db, 'users', email);
+            const userSnap = await getDoc(userRef);
+
+            if (!userSnap.exists()) {
+                throw new Error('ROLE_NOT_FOUND');
+            }
+
+            const data = userSnap.data();
+            const allowedRoles = ['viewer', 'editor', 'admin'];
+            if (!allowedRoles.includes(data.role)) {
+                throw new Error('INVALID_ROLE');
+            }
+
+            return data.role;
+        }
+
+        // =========================
+        // Realtime Firestore
+        // =========================
+        function startRealtimeTransactions() {
+            if (unsubscribeTransactions) unsubscribeTransactions();
+
+            const transactionsQuery = query(
+                collection(db, 'transactions'),
+                orderBy('createdAt', 'desc')
+            );
+
+            unsubscribeTransactions = onSnapshot(
+                transactionsQuery,
+                (snapshot) => {
+                    transactions = snapshot.docs.map(item => ({
+                        id: item.id,
+                        ...item.data()
+                    }));
+                    initApp();
+                },
+                (error) => {
+                    console.error('Firestore realtime error:', error);
+                    const message = document.getElementById('loginMessage');
+                    if (message && !document.getElementById('loginScreen').classList.contains('hidden')) {
+                        message.textContent = 'Gagal membaca database. Periksa Firestore Rules.';
+                    }
+                    alert('Gagal mengambil data realtime dari Firestore. Periksa Security Rules Firebase.');
+                }
+            );
+        }
+
+        // Login otomatis tetap aktif setelah refresh selama sesi Firebase masih tersimpan.
+        onAuthStateChanged(auth, async (user) => {
+            currentUser = user;
+
+            if (!user) {
+                currentRole = null;
+                transactions = [];
+                if (unsubscribeTransactions) {
+                    unsubscribeTransactions();
+                    unsubscribeTransactions = null;
+                }
+                document.body.classList.remove('viewer-mode');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('loginMessage').textContent = '';
+                document.getElementById('loginEmail').value = '';
+                document.getElementById('loginPassword').value = '';
+                return;
+            }
+
+            try {
+                currentRole = await loadCurrentUserRole(user);
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.body.classList.toggle('viewer-mode', currentRole === 'viewer');
+                document.getElementById('date').valueAsDate = new Date();
+                updateCategories();
+                applyRolePermissions();
+                enforceEditorFields();
+                startRealtimeTransactions();
+            } catch (error) {
+                console.error(error);
+                await signOut(auth);
+                document.getElementById('loginMessage').textContent = 'Akun belum memiliki role di database Duitku.';
+            }
+        });
+
+        // =========================
+        // Hak akses
+        // =========================
         function applyRolePermissions() {
             const isEditor = currentRole === 'editor';
             const isAdmin = currentRole === 'admin';
             const canEdit = isEditor || isAdmin;
 
-            // Form transaksi terlihat untuk Pengedit dan Admin.
             document.querySelectorAll('[data-edit-only="true"]').forEach(el => {
                 el.style.display = canEdit ? '' : 'none';
             });
 
-            // Pengedit hanya boleh memakai/mengurangi uang (pengeluaran).
             const incomeRadio = document.querySelector('input[name="type"][value="income"]');
             const expenseRadio = document.querySelector('input[name="type"][value="expense"]');
 
@@ -375,17 +536,13 @@
                 }
             }
 
-            // Reset dan hapus transaksi hanya untuk Admin.
             const resetButton = document.getElementById('editOnly');
-            if (resetButton) {
-                resetButton.style.display = isAdmin ? '' : 'none';
-            }
+            if (resetButton) resetButton.style.display = isAdmin ? '' : 'none';
 
             document.querySelectorAll('#transactionList button[onclick^="deleteTransaction"]').forEach(btn => {
                 btn.style.display = isAdmin ? '' : 'none';
             });
 
-            // Badge mode.
             let badge = document.getElementById('roleBadge');
             if (!badge) {
                 const headerContainer = document.querySelector('header .max-w-7xl > div');
@@ -407,147 +564,6 @@
                 badge.style.display = currentRole ? '' : 'none';
             }
         }
-
-        // Kategori konfigurasi
-        const categoriesMap = {
-            income: ['Gaji', 'Lainnya'],
-            expense: ['Makanan', 'Transport', 'Belanja', 'Hiburan', 'Lainnya']
-        };
-
-        // Data Penyimpanan (LocalStorage)
-        const savedTransactions =
-            localStorage.getItem('duitku_transactions') ??
-            localStorage.getItem('dompetku_transactions');
-
-        let transactions = JSON.parse(savedTransactions) || [
-            { id: 1, type: 'income', category: 'Gaji', amount: 5000000, description: 'Gaji Bulanan', date: '2026-10-01' },
-            { id: 2, type: 'expense', category: 'Makanan', amount: 45000, description: 'Makan Siang', date: '2026-10-02' },
-            { id: 3, type: 'expense', category: 'Transport', amount: 25000, description: 'Bensin Ojek Online', date: '2026-10-02' }
-        ];
-
-        let expenseChartInstance = null;
-
-        // Inisialisasi awal halaman
-        window.onload = function() {
-            // Set tanggal hari ini default pada form
-            document.getElementById('date').valueAsDate = new Date();
-            updateCategories();
-            initApp();
-        };
-
-        // Update pilihan kategori berdasarkan radio jenis transaksi
-        function updateCategories() {
-            const selectedType = document.querySelector('input[name="type"]:checked').value;
-            const categorySelect = document.getElementById('category');
-            categorySelect.innerHTML = '';
-            
-            categoriesMap[selectedType].forEach(cat => {
-                const opt = document.createElement('option');
-                opt.value = cat;
-                opt.textContent = cat;
-                categorySelect.appendChild(opt);
-            });
-        }
-
-        // Format angka input ke Rupiah otomatis
-        function formatRupiahInput(input) {
-            let value = input.value.replace(/[^,\d]/g, '').toString();
-            let split = value.split(',');
-            let sisa = split[0].length % 3;
-            let rupiah = split[0].substr(0, sisa);
-            let ribuan = split[0].substr(sisa).match(/\d{3}/gi);
-
-            if (ribuan) {
-                let separator = sisa ? '.' : '';
-                rupiah += separator + ribuan.join('.');
-            }
-
-            rupiah = split[1] != undefined ? rupiah + ',' + split[1] : rupiah;
-            input.value = rupiah;
-        }
-
-        // Ambil nilai mentah angka dari string rupiah
-        function parseRupiah(str) {
-            return parseInt(str.replace(/\./g, '')) || 0;
-        }
-
-        // Format angka ke format mata uang Rupiah
-        function formatRupiah(number) {
-            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
-        }
-
-        // Tambah transaksi baru
-        function addTransaction(e) {
-            e.preventDefault();
-            if (currentRole !== 'editor' && currentRole !== 'admin') return;
-
-            // Pengedit hanya boleh mencatat pengeluaran.
-            if (currentRole === 'editor') {
-                const expenseRadio = document.querySelector('input[name="type"][value="expense"]');
-                if (expenseRadio) expenseRadio.checked = true;
-            }
-
-            const selectedType = document.querySelector('input[name="type"]:checked');
-            if (!selectedType) {
-                alert('Pilih jenis transaksi terlebih dahulu.');
-                return;
-            }
-            const type = selectedType.value;
-
-            // Pengedit tidak pernah boleh membuat pemasukan.
-            if (currentRole === 'editor' && type !== 'expense') return;
-            const category = document.getElementById('category').value;
-            const rawAmount = document.getElementById('amount').value;
-            const amount = parseRupiah(rawAmount);
-            const description = document.getElementById('description').value;
-            const date = document.getElementById('date').value;
-
-            if (amount <= 0) {
-                alert('Jumlah uang harus lebih besar dari 0');
-                return;
-            }
-
-            const newTx = {
-                id: Date.now(),
-                type,
-                category,
-                amount,
-                description,
-                date
-            };
-
-            transactions.unshift(newTx);
-            saveAndRefresh();
-            
-            // Reset form input amount dan keterangan
-            document.getElementById('amount').value = '';
-            document.getElementById('description').value = '';
-            document.getElementById('date').valueAsDate = new Date();
-        }
-
-        // Hapus transaksi
-        function deleteTransaction(id) {
-            if (currentRole !== 'admin') return;
-            transactions = transactions.filter(tx => tx.id !== id);
-            saveAndRefresh();
-        }
-
-        // Simpan ke localStorage dan perbarui tampilan
-        function saveAndRefresh() {
-            localStorage.setItem('duitku_transactions', JSON.stringify(transactions));
-            initApp();
-        }
-
-        // Reset semua data
-        function resetData() {
-            if (currentRole !== 'admin') return;
-            if (confirm('Apakah Anda yakin ingin mereset seluruh data catatan keuangan?')) {
-                transactions = [];
-                saveAndRefresh();
-            }
-        }
-
-        // Inisialisasi seluruh tampilan utama
 
         function enforceEditorFields() {
             const form = document.getElementById('transactionForm');
@@ -573,6 +589,9 @@
             }
         }
 
+        // =========================
+        // Tampilan aplikasi
+        // =========================
         function initApp() {
             updateSummary();
             renderTransactions();
@@ -581,36 +600,30 @@
             enforceEditorFields();
         }
 
-        // Hitung dan perbarui ringkasan Total Saldo, Pemasukan, Pengeluaran
         function updateSummary() {
             let totalIncome = 0;
             let totalExpense = 0;
 
             transactions.forEach(tx => {
-                if (tx.type === 'income') {
-                    totalIncome += tx.amount;
-                } else {
-                    totalExpense += tx.amount;
-                }
+                if (tx.type === 'income') totalIncome += Number(tx.amount) || 0;
+                else totalExpense += Number(tx.amount) || 0;
             });
 
-            let totalSaldo = totalIncome - totalExpense;
-
+            const totalSaldo = totalIncome - totalExpense;
             document.getElementById('totalSaldo').textContent = formatRupiah(totalSaldo);
             document.getElementById('totalIncome').textContent = formatRupiah(totalIncome);
             document.getElementById('totalExpense').textContent = formatRupiah(totalExpense);
         }
 
-        // Render daftar riwayat transaksi dengan filter
         function renderTransactions() {
             const filterType = document.getElementById('filterType').value;
             const filterCategory = document.getElementById('filterCategory').value;
             const tbody = document.getElementById('transactionList');
             tbody.innerHTML = '';
 
-            let filtered = transactions.filter(tx => {
-                let matchType = (filterType === 'all' || tx.type === filterType);
-                let matchCategory = (filterCategory === 'all' || tx.category === filterCategory);
+            const filtered = transactions.filter(tx => {
+                const matchType = filterType === 'all' || tx.type === filterType;
+                const matchCategory = filterCategory === 'all' || tx.category === filterCategory;
                 return matchType && matchCategory;
             });
 
@@ -629,13 +642,13 @@
                 const amountSign = isIncome ? '+' : '-';
 
                 tr.innerHTML = `
-                    <td class="py-3 px-4 text-xs text-slate-500">${tx.date}</td>
-                    <td class="py-3 px-4 font-medium text-slate-800">${escapeHtml(tx.description)}</td>
-                    <td class="py-3 px-4"><span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs font-medium">${tx.category}</span></td>
+                    <td class="py-3 px-4 text-xs text-slate-500">${escapeHtml(tx.date || '')}</td>
+                    <td class="py-3 px-4 font-medium text-slate-800">${escapeHtml(tx.description || '')}</td>
+                    <td class="py-3 px-4"><span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs font-medium">${escapeHtml(tx.category || '')}</span></td>
                     <td class="py-3 px-4"><span class="${badgeClass} px-2.5 py-1 rounded-full text-xs font-medium">${typeText}</span></td>
-                    <td class="py-3 px-4 text-right font-semibold ${isIncome ? 'text-emerald-600' : 'text-slate-800'}">${amountSign} ${formatRupiah(tx.amount)}</td>
+                    <td class="py-3 px-4 text-right font-semibold ${isIncome ? 'text-emerald-600' : 'text-slate-800'}">${amountSign} ${formatRupiah(Number(tx.amount) || 0)}</td>
                     <td class="py-3 px-4 text-center">
-                        <button onclick="deleteTransaction(${tx.id})" class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition flex items-center justify-center mx-auto" title="Hapus">
+                        <button onclick="deleteTransaction('${String(tx.id).replace(/'/g, "\\'")}')" class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition flex items-center justify-center mx-auto" title="Hapus" style="display:${currentRole === 'admin' ? '' : 'none'}">
                             <i class="fa-solid fa-trash-can text-xs"></i>
                         </button>
                     </td>
@@ -644,21 +657,19 @@
             });
         }
 
-        // Update Chart.js untuk visualisasi kategori pengeluaran
         function updateChart() {
-            // Kumpulkan pengeluaran per kategori
             const expenseCategories = ['Makanan', 'Transport', 'Belanja', 'Hiburan', 'Lainnya'];
-            let categoryTotals = expenseCategories.map(cat => {
-                return transactions
+            const categoryTotals = expenseCategories.map(cat =>
+                transactions
                     .filter(tx => tx.type === 'expense' && tx.category === cat)
-                    .reduce((sum, tx) => sum + tx.amount, 0);
-            });
+                    .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
+            );
 
-            const ctx = document.getElementById('expenseChart').getContext('2d');
+            const canvas = document.getElementById('expenseChart');
+            if (!canvas || typeof Chart === 'undefined') return;
+            const ctx = canvas.getContext('2d');
 
-            if (expenseChartInstance) {
-                expenseChartInstance.destroy();
-            }
+            if (expenseChartInstance) expenseChartInstance.destroy();
 
             expenseChartInstance = new Chart(ctx, {
                 type: 'doughnut',
@@ -666,13 +677,7 @@
                     labels: expenseCategories,
                     datasets: [{
                         data: categoryTotals,
-                        backgroundColor: [
-                            '#6366f1', // Indigo
-                            '#ec4899', // Pink
-                            '#f59e0b', // Amber
-                            '#10b981', // Emerald
-                            '#94a3b8'  // Slate
-                        ],
+                        backgroundColor: ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#94a3b8'],
                         borderWidth: 2,
                         borderColor: '#ffffff'
                     }]
@@ -681,33 +686,169 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                boxWidth: 12,
-                                font: {
-                                    size: 11,
-                                    family: 'Inter'
-                                }
-                            }
-                        }
-                    },
-                    cutout: '70%'
+                        legend: { position: 'bottom' }
+                    }
                 }
             });
         }
 
-        // Helper untuk mencegah XSS sederhana
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": ''
-            };
-            return text.replace(/[&<>"]/g, function(m) { return map[m]; });
+        function updateCategories() {
+            const selected = document.querySelector('input[name="type"]:checked');
+            if (!selected) return;
+            const categorySelect = document.getElementById('category');
+            categorySelect.innerHTML = '';
+            (categoriesMap[selected.value] || []).forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                categorySelect.appendChild(opt);
+            });
         }
+
+        function formatRupiahInput(input) {
+            let value = input.value.replace(/[^,\d]/g, '').toString();
+            const split = value.split(',');
+            const sisa = split[0].length % 3;
+            let rupiah = split[0].substr(0, sisa);
+            const ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+            if (ribuan) {
+                const separator = sisa ? '.' : '';
+                rupiah += separator + ribuan.join('.');
+            }
+            rupiah = split[1] !== undefined ? rupiah + ',' + split[1] : rupiah;
+            input.value = rupiah;
+        }
+
+        function parseRupiah(str) {
+            return parseInt(String(str).replace(/\./g, ''), 10) || 0;
+        }
+
+        function formatRupiah(number) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(number);
+        }
+
+        // =========================
+        // Transaksi Firestore
+        // =========================
+        async function addTransaction(e) {
+            e.preventDefault();
+            if (currentRole !== 'editor' && currentRole !== 'admin') return;
+
+            if (currentRole === 'editor') {
+                const expenseRadio = document.querySelector('input[name="type"][value="expense"]');
+                if (expenseRadio) expenseRadio.checked = true;
+            }
+
+            const selectedType = document.querySelector('input[name="type"]:checked');
+            if (!selectedType) {
+                alert('Pilih jenis transaksi terlebih dahulu.');
+                return;
+            }
+
+            const type = selectedType.value;
+            if (currentRole === 'editor' && type !== 'expense') {
+                alert('Pengedit hanya dapat mencatat pengeluaran.');
+                return;
+            }
+
+            const category = document.getElementById('category').value;
+            const amount = parseRupiah(document.getElementById('amount').value);
+            const description = document.getElementById('description').value.trim();
+            const date = document.getElementById('date').value;
+
+            if (amount <= 0) {
+                alert('Jumlah uang harus lebih besar dari 0.');
+                return;
+            }
+            if (!date || !description) {
+                alert('Keterangan dan tanggal wajib diisi.');
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, 'transactions'), {
+                    type,
+                    category,
+                    amount,
+                    description,
+                    date,
+                    createdBy: currentUser?.email || '',
+                    createdAt: serverTimestamp()
+                });
+
+                document.getElementById('amount').value = '';
+                document.getElementById('description').value = '';
+                document.getElementById('date').valueAsDate = new Date();
+            } catch (error) {
+                console.error(error);
+                alert('Transaksi gagal disimpan. Periksa Firestore Rules dan koneksi internet.');
+            }
+        }
+
+        async function deleteTransaction(id) {
+            if (currentRole !== 'admin') return;
+            if (!confirm('Hapus transaksi ini?')) return;
+
+            try {
+                await deleteDoc(doc(db, 'transactions', id));
+            } catch (error) {
+                console.error(error);
+                alert('Transaksi gagal dihapus.');
+            }
+        }
+
+        async function resetData() {
+            if (currentRole !== 'admin') return;
+            if (!confirm('Apakah Anda yakin ingin mereset seluruh data catatan keuangan?')) return;
+
+            try {
+                const snapshot = await getDocs(collection(db, 'transactions'));
+                if (snapshot.empty) return;
+
+                // Firestore batch maksimal 500 operasi; pecah jika data sudah banyak.
+                let batch = writeBatch(db);
+                let count = 0;
+
+                for (const item of snapshot.docs) {
+                    batch.delete(item.ref);
+                    count++;
+                    if (count === 500) {
+                        await batch.commit();
+                        batch = writeBatch(db);
+                        count = 0;
+                    }
+                }
+
+                if (count > 0) await batch.commit();
+            } catch (error) {
+                console.error(error);
+                alert('Reset data gagal.');
+            }
+        }
+
+        // Filter transaksi
+        document.getElementById('filterType')?.addEventListener('change', renderTransactions);
+        document.getElementById('filterCategory')?.addEventListener('change', renderTransactions);
+
+        // Expose functions for the existing inline HTML onclick/onsubmit handlers.
+        window.login = login;
+        window.logout = logout;
+        window.addTransaction = addTransaction;
+        window.deleteTransaction = deleteTransaction;
+        window.resetData = resetData;
+        window.updateCategories = updateCategories;
+        window.formatRupiahInput = formatRupiahInput;
+
+        // Tanggal awal form.
+        window.addEventListener('load', () => {
+            const date = document.getElementById('date');
+            if (date && !date.value) date.valueAsDate = new Date();
+            updateCategories();
+        });
     </script>
 </body>
 </html>
