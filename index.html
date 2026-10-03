@@ -74,6 +74,34 @@
             color: #4f46e5;
             font-size: 28px;
         }
+
+        /* Popup notifikasi */
+        #appPopup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            width: min(380px, calc(100vw - 40px));
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: white;
+            box-shadow: 0 15px 40px rgba(15,23,42,.18);
+            border: 1px solid #e2e8f0;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transform: translateY(-20px);
+            opacity: 0;
+            pointer-events: none;
+            transition: all .25s ease;
+        }
+        #appPopup.show { transform: translateY(0); opacity: 1; }
+        #appPopupIcon { width: 34px; height: 34px; border-radius: 10px; display:flex; align-items:center; justify-content:center; flex:none; }
+        #appPopupTitle { font-size: 13px; font-weight: 700; color: #0f172a; }
+        #appPopupMessage { font-size: 12px; color: #64748b; margin-top: 2px; line-height: 1.45; }
+        #appPopupClose { margin-left:auto; color:#94a3b8; background:none; border:0; cursor:pointer; padding:2px 4px; }
+        @media (max-width:640px) { #appPopup { top: 12px; right: 12px; width: calc(100vw - 24px); } }
+
         #loginMessage {
             min-height: 20px;
             margin-top: 10px;
@@ -89,6 +117,16 @@
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-full flex flex-col">
+
+
+    <div id="appPopup" role="status" aria-live="polite">
+        <div id="appPopupIcon"><i id="appPopupIconSymbol" class="fa-solid fa-check"></i></div>
+        <div class="flex-1 min-w-0">
+            <div id="appPopupTitle">Berhasil</div>
+            <div id="appPopupMessage"></div>
+        </div>
+        <button id="appPopupClose" type="button" onclick="hidePopup()" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button>
+    </div>
 
     <div id="loginScreen">
         <div class="login-card">
@@ -431,8 +469,10 @@
                     message.textContent = 'Email atau sandi salah.';
                 } else if (error.code === 'auth/too-many-requests') {
                     message.textContent = 'Terlalu banyak percobaan. Coba lagi nanti.';
+                    showPopup('warning', 'Login dibatasi', 'Terlalu banyak percobaan. Coba lagi nanti.');
                 } else {
                     message.textContent = 'Login gagal. Periksa koneksi internet dan data akun.';
+                    showPopup('error', 'Login gagal', 'Periksa koneksi internet dan data akun.');
                 }
             } finally {
                 if (button) {
@@ -470,6 +510,38 @@
             }
 
             return data.role;
+        }
+
+
+        let popupTimer = null;
+        function showPopup(type, title, message, duration = 3000) {
+            const popup = document.getElementById('appPopup');
+            const icon = document.getElementById('appPopupIcon');
+            const symbol = document.getElementById('appPopupIconSymbol');
+            const titleEl = document.getElementById('appPopupTitle');
+            const messageEl = document.getElementById('appPopupMessage');
+            if (!popup) return;
+
+            const styles = {
+                success: ['bg-emerald-50 text-emerald-600', 'fa-solid fa-check'],
+                error: ['bg-rose-50 text-rose-600', 'fa-solid fa-xmark'],
+                warning: ['bg-amber-50 text-amber-600', 'fa-solid fa-triangle-exclamation'],
+                info: ['bg-indigo-50 text-indigo-600', 'fa-solid fa-circle-info']
+            };
+            const [iconClass, symbolClass] = styles[type] || styles.info;
+            icon.className = 'w-9 h-9 rounded-xl flex items-center justify-center flex-none '+iconClass;
+            symbol.className = symbolClass;
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            popup.classList.add('show');
+            clearTimeout(popupTimer);
+            if (duration > 0) popupTimer = setTimeout(hidePopup, duration);
+        }
+
+        function hidePopup() {
+            const popup = document.getElementById('appPopup');
+            if (popup) popup.classList.remove('show');
+            clearTimeout(popupTimer);
         }
 
         // =========================
@@ -792,7 +864,7 @@
 
             const type = selectedType.value;
             if (currentRole === 'editor' && type !== 'expense') {
-                alert('Pengedit hanya dapat mencatat pengeluaran.');
+                showPopup('warning', 'Transaksi tidak diizinkan', 'Pengedit hanya dapat mencatat pengeluaran.');
                 return;
             }
 
@@ -802,11 +874,11 @@
             const date = document.getElementById('date').value;
 
             if (amount <= 0) {
-                alert('Jumlah uang harus lebih besar dari 0.');
+                showPopup('warning', 'Jumlah tidak valid', 'Jumlah uang harus lebih besar dari 0.');
                 return;
             }
             if (!date || !description) {
-                alert('Keterangan dan tanggal wajib diisi.');
+                showPopup('warning', 'Data belum lengkap', 'Keterangan dan tanggal wajib diisi.');
                 return;
             }
 
@@ -838,7 +910,7 @@
                 await deleteDoc(doc(db, 'transactions', id));
             } catch (error) {
                 console.error(error);
-                alert('Transaksi gagal dihapus.');
+                showPopup('error', 'Gagal menghapus', 'Transaksi tidak dapat dihapus.');
             }
         }
 
@@ -867,7 +939,7 @@
                 if (count > 0) await batch.commit();
             } catch (error) {
                 console.error(error);
-                alert('Reset data gagal.');
+                showPopup('error', 'Reset gagal', 'Data tidak dapat dihapus.');
             }
         }
 
