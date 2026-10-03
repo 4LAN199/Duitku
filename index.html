@@ -312,6 +312,13 @@
                 </div>
                 <div class="relative w-full h-64 flex items-center justify-center">
                     <canvas id="expenseChart"></canvas>
+                    <div id="chartEmptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center">
+                        <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-2">
+                            <i class="fa-solid fa-chart-pie text-slate-400"></i>
+                        </div>
+                        <p class="text-sm font-medium text-slate-500">Belum ada pengeluaran</p>
+                        <p class="text-xs text-slate-400 mt-1">Grafik akan muncul setelah ada transaksi.</p>
+                    </div>
                 </div>
             </div>
 
@@ -325,6 +332,7 @@
                 
                 <!-- Filter bar -->
                 <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <span id="transactionCount" class="text-xs text-slate-400 mr-1">0 transaksi</span>
                     <select id="filterType" onchange="renderTransactions()" class="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="all">Semua Jenis</option>
                         <option value="income">Pemasukan</option>
@@ -740,8 +748,22 @@
                 return matchType && matchCategory;
             });
 
+            const countEl = document.getElementById('transactionCount');
+            if (countEl) countEl.textContent = `${filtered.length} transaksi`;
+
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-slate-400 text-xs">Belum ada catatan transaksi yang ditemukan.</td></tr>`;
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-10 text-center">
+                            <div class="flex flex-col items-center justify-center">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
+                                    <i class="fa-solid fa-receipt text-slate-400"></i>
+                                </div>
+                                <p class="text-sm font-medium text-slate-500">Belum ada transaksi</p>
+                                <p class="text-xs text-slate-400 mt-1">Transaksi yang tersimpan akan muncul di sini.</p>
+                            </div>
+                        </td>
+                    </tr>`;
                 return;
             }
 
@@ -779,17 +801,41 @@
             );
 
             const canvas = document.getElementById('expenseChart');
+            const emptyState = document.getElementById('chartEmptyState');
             if (!canvas || typeof Chart === 'undefined') return;
+
+            const totalExpense = categoryTotals.reduce((sum, value) => sum + value, 0);
+
+            if (expenseChartInstance) {
+                expenseChartInstance.destroy();
+                expenseChartInstance = null;
+            }
+
+            if (totalExpense <= 0) {
+                canvas.style.display = 'none';
+                if (emptyState) emptyState.classList.remove('hidden');
+                return;
+            }
+
+            canvas.style.display = '';
+            if (emptyState) emptyState.classList.add('hidden');
+
+            const visibleLabels = [];
+            const visibleData = [];
+            expenseCategories.forEach((cat, index) => {
+                if (categoryTotals[index] > 0) {
+                    visibleLabels.push(cat);
+                    visibleData.push(categoryTotals[index]);
+                }
+            });
+
             const ctx = canvas.getContext('2d');
-
-            if (expenseChartInstance) expenseChartInstance.destroy();
-
             expenseChartInstance = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: expenseCategories,
+                    labels: visibleLabels,
                     datasets: [{
-                        data: categoryTotals,
+                        data: visibleData,
                         backgroundColor: ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#94a3b8'],
                         borderWidth: 2,
                         borderColor: '#ffffff'
@@ -798,8 +844,25 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    cutout: '62%',
                     plugins: {
-                        legend: { position: 'bottom' }
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 14,
+                                font: { size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = Number(context.raw) || 0;
+                                    const percentage = totalExpense > 0 ? ((value / totalExpense) * 100).toFixed(1) : '0.0';
+                                    return ` ${context.label}: ${formatRupiah(value)} (${percentage}%)`;
+                                }
+                            }
+                        }
                     }
                 }
             });
