@@ -8,16 +8,29 @@
     <meta name="robots" content="index, follow">
     <meta name="author" content="Duitku">
     <link rel="canonical" href="https://4lan199.github.io/Duitku/">
+
     <meta property="og:type" content="website">
     <meta property="og:title" content="Duitku - Aplikasi Pencatatan Keuangan Pribadi">
-    <meta property="og:description" content="Catat pemasukan, pengeluaran, saldo, dan riwayat transaksi dengan mudah menggunakan Duitku.">
+    <meta property="og:description" content="Catat pemasukan, pengeluaran, saldo, dan riwayat transaksi keuangan pribadi dengan mudah menggunakan Duitku.">
     <meta property="og:url" content="https://4lan199.github.io/Duitku/">
     <meta property="og:site_name" content="Duitku">
+
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Duitku - Aplikasi Pencatatan Keuangan Pribadi">
     <meta name="twitter:description" content="Aplikasi sederhana untuk mencatat dan memantau keuangan pribadi.">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%234f46e5'/%3E%3Cpath d='M15 22h30a6 6 0 0 1 6 6v17H21a6 6 0 0 1-6-6V22z' fill='white'/%3E%3Ccircle cx='42' cy='36' r='4' fill='%234f46e5'/%3E%3C/svg%3E">
-    <!-- Tailwind CSS CDN -->
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Duitku",
+      "url": "https://4lan199.github.io/Duitku/",
+      "description": "Aplikasi pencatatan keuangan pribadi untuk mencatat pemasukan, pengeluaran, saldo, dan riwayat transaksi.",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Web"
+    }
+    </script>
+<!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -28,17 +41,6 @@
     <style>
         body { font-family: 'Inter', sans-serif; }
     </style>
-    <script type="application/ld+json">
-    {
-      "@context":"https://schema.org",
-      "@type":"WebApplication",
-      "name":"Duitku",
-      "url":"https://4lan199.github.io/Duitku/",
-      "description":"Aplikasi pencatatan keuangan pribadi untuk mencatat pemasukan, pengeluaran, saldo, dan riwayat transaksi.",
-      "applicationCategory":"FinanceApplication",
-      "operatingSystem":"Web"
-    }
-    </script>
 </head>
 <body class="bg-slate-50 text-slate-800 h-full flex flex-col">
 
@@ -60,6 +62,10 @@
     </header>
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full space-y-6">
+        <section class="sr-only">
+            <h2>Aplikasi Keuangan Pribadi Duitku</h2>
+            <p>Duitku membantu mencatat pemasukan, pengeluaran, saldo, kategori, dan riwayat transaksi keuangan pribadi.</p>
+        </section>
         
         <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <!-- Total Saldo -->
@@ -219,7 +225,11 @@
         };
 
         // Data Penyimpanan (LocalStorage)
-        let transactions = JSON.parse(localStorage.getItem('duitku_transactions')) || [
+        const savedTransactions =
+            localStorage.getItem('duitku_transactions') ??
+            localStorage.getItem('dompetku_transactions');
+
+        let transactions = JSON.parse(savedTransactions) || [
             { id: 1, type: 'income', category: 'Gaji', amount: 5000000, description: 'Gaji Bulanan', date: '2026-10-01' },
             { id: 2, type: 'expense', category: 'Makanan', amount: 45000, description: 'Makan Siang', date: '2026-10-02' },
             { id: 3, type: 'expense', category: 'Transport', amount: 25000, description: 'Bensin Ojek Online', date: '2026-10-02' }
