@@ -120,7 +120,7 @@
 
             <p id="loginMessage"></p>
             <p class="text-[11px] text-slate-400 mt-4">
-                Penonton: lihat data · Pengedit: catat pengeluaran · Admin: kelola semua data
+                Penonton: lihat data · Pengedit: gunakan uang/pengeluaran · Admin: tambah & kurangi uang
             </p>
         </div>
     </div>
@@ -351,25 +351,31 @@
             const isAdmin = currentRole === 'admin';
             const canEdit = isEditor || isAdmin;
 
-            // Form transaksi: Editor hanya boleh mengurangi uang (pengeluaran).
-            // Admin boleh menambah maupun mengurangi uang.
+            // Form transaksi terlihat untuk Pengedit dan Admin.
             document.querySelectorAll('[data-edit-only="true"]').forEach(el => {
                 el.style.display = canEdit ? '' : 'none';
             });
 
-            const typeSelect = document.getElementById('type');
-            if (typeSelect) {
+            // Pengedit hanya boleh memakai/mengurangi uang (pengeluaran).
+            const incomeRadio = document.querySelector('input[name="type"][value="income"]');
+            const expenseRadio = document.querySelector('input[name="type"][value="expense"]');
+
+            if (incomeRadio && expenseRadio) {
                 if (isEditor) {
-                    typeSelect.value = 'expense';
-                    typeSelect.disabled = true;
+                    incomeRadio.checked = false;
+                    incomeRadio.disabled = true;
+                    expenseRadio.checked = true;
+                    expenseRadio.disabled = false;
                 } else if (isAdmin) {
-                    typeSelect.disabled = false;
+                    incomeRadio.disabled = false;
+                    expenseRadio.disabled = false;
                 } else {
-                    typeSelect.disabled = true;
+                    incomeRadio.disabled = true;
+                    expenseRadio.disabled = true;
                 }
             }
 
-            // Tombol reset dan hapus hanya untuk Admin.
+            // Reset dan hapus transaksi hanya untuk Admin.
             const resetButton = document.getElementById('editOnly');
             if (resetButton) {
                 resetButton.style.display = isAdmin ? '' : 'none';
@@ -379,7 +385,7 @@
                 btn.style.display = isAdmin ? '' : 'none';
             });
 
-            // Badge mode akses.
+            // Badge mode.
             let badge = document.getElementById('roleBadge');
             if (!badge) {
                 const headerContainer = document.querySelector('header .max-w-7xl > div');
@@ -390,6 +396,7 @@
                     headerContainer.appendChild(badge);
                 }
             }
+
             if (badge) {
                 const labels = {
                     viewer: '👀 Penonton',
@@ -476,9 +483,19 @@
 
             // Pengedit hanya boleh mencatat pengeluaran.
             if (currentRole === 'editor') {
-                document.getElementById('type').value = 'expense';
+                const expenseRadio = document.querySelector('input[name="type"][value="expense"]');
+                if (expenseRadio) expenseRadio.checked = true;
             }
-            const type = document.querySelector('input[name="type"]:checked').value;
+
+            const selectedType = document.querySelector('input[name="type"]:checked');
+            if (!selectedType) {
+                alert('Pilih jenis transaksi terlebih dahulu.');
+                return;
+            }
+            const type = selectedType.value;
+
+            // Pengedit tidak pernah boleh membuat pemasukan.
+            if (currentRole === 'editor' && type !== 'expense') return;
             const category = document.getElementById('category').value;
             const rawAmount = document.getElementById('amount').value;
             const amount = parseRupiah(rawAmount);
@@ -541,10 +558,18 @@
                 el.disabled = !canEdit;
             });
 
-            const typeSelect = document.getElementById('type');
-            if (typeSelect && currentRole === 'editor') {
-                typeSelect.value = 'expense';
-                typeSelect.disabled = true;
+            const incomeRadio = form.querySelector('input[name="type"][value="income"]');
+            const expenseRadio = form.querySelector('input[name="type"][value="expense"]');
+
+            if (currentRole === 'editor') {
+                if (incomeRadio) {
+                    incomeRadio.checked = false;
+                    incomeRadio.disabled = true;
+                }
+                if (expenseRadio) {
+                    expenseRadio.checked = true;
+                    expenseRadio.disabled = false;
+                }
             }
         }
 
@@ -553,6 +578,7 @@
             renderTransactions();
             updateChart();
             applyRolePermissions();
+            enforceEditorFields();
         }
 
         // Hitung dan perbarui ringkasan Total Saldo, Pemasukan, Pengeluaran
