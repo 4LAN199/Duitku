@@ -478,10 +478,9 @@
         function startRealtimeTransactions() {
             if (unsubscribeTransactions) unsubscribeTransactions();
 
-            const transactionsQuery = query(
-                collection(db, 'transactions'),
-                orderBy('createdAt', 'desc')
-            );
+            // Ambil semua transaksi tanpa orderBy agar transaksi lama yang
+            // belum memiliki createdAt tetap terbaca. Pengurutan dilakukan di browser.
+            const transactionsQuery = collection(db, 'transactions');
 
             unsubscribeTransactions = onSnapshot(
                 transactionsQuery,
@@ -490,6 +489,16 @@
                         id: item.id,
                         ...item.data()
                     }));
+
+                    // Urutkan terbaru berdasarkan createdAt jika tersedia,
+                    // lalu gunakan tanggal transaksi sebagai cadangan.
+                    transactions.sort((a, b) => {
+                        const aTime = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+                        const bTime = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+                        if (aTime !== bTime) return bTime - aTime;
+                        return String(b.date || '').localeCompare(String(a.date || ''));
+                    });
+
                     initApp();
                 },
                 (error) => {
