@@ -207,7 +207,7 @@
             </button>
 
             <button onclick="logout()" class="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg transition border border-white/20 flex items-center gap-1.5">
-                <i class="fa-solid fa-lock"></i> Log Out
+                <i class="fa-solid fa-lock"></i> Kunci
             </button>
         </div>
     </header>
@@ -355,7 +355,7 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="border-b border-slate-100 text-slate-400 text-xs uppercase font-semibold">
-                            <th class="py-3 px-4">Tanggal</th>
+                            <th class="py-3 px-4">Tanggal &amp; Waktu</th>
                             <th class="py-3 px-4">Keterangan</th>
                             <th class="py-3 px-4">Kategori</th>
                             <th class="py-3 px-4">Jenis</th>
@@ -746,6 +746,38 @@
                 .replace(/'/g, '&#039;');
         }
 
+        // Format tanggal transaksi sekaligus jam, menit, dan detik.
+        // createdAt berasal dari serverTimestamp() Firestore.
+        function formatTransactionDateTime(tx) {
+            try {
+                let dateObj = null;
+
+                if (tx.createdAt?.toDate) {
+                    dateObj = tx.createdAt.toDate();
+                } else if (tx.createdAt?.seconds) {
+                    dateObj = new Date(tx.createdAt.seconds * 1000);
+                }
+
+                if (dateObj && !isNaN(dateObj.getTime())) {
+                    return new Intl.DateTimeFormat('id-ID', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    }).format(dateObj).replace(' pada ', ' ');
+                }
+
+                // Transaksi lama yang belum mempunyai createdAt hanya punya tanggal.
+                return tx.date ? escapeHtml(tx.date) + ' <span class="text-slate-400">(waktu tidak tersedia)</span>' : '-';
+            } catch (error) {
+                console.error('Gagal memformat waktu transaksi:', error);
+                return escapeHtml(tx.date || '-');
+            }
+        }
+
         function renderTransactions() {
             const filterType = document.getElementById('filterType').value;
             const filterCategory = document.getElementById('filterCategory').value;
@@ -787,7 +819,7 @@
                 const amountSign = isIncome ? '+' : '-';
 
                 tr.innerHTML = `
-                    <td class="py-3 px-4 text-xs text-slate-500">${escapeHtml(tx.date || '')}</td>
+                    <td class="py-3 px-4 text-xs text-slate-500">${formatTransactionDateTime(tx)}</td>
                     <td class="py-3 px-4 font-medium text-slate-800">${escapeHtml(tx.description || '')}</td>
                     <td class="py-3 px-4"><span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs font-medium">${escapeHtml(tx.category || '')}</span></td>
                     <td class="py-3 px-4"><span class="${badgeClass} px-2.5 py-1 rounded-full text-xs font-medium">${typeText}</span></td>
