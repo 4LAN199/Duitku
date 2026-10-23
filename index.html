@@ -433,15 +433,19 @@
         // Firebase Web SDK via CDN. Firebase documents browser-module CDN imports as a simple setup
         // for sites that do not use a build tool.
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
-        import {
-            getAuth,
-            signInWithEmailAndPassword,
-            createUserWithEmailAndPassword,
-            sendEmailVerification,
-            reload,
-            onAuthStateChanged,
-            signOut
-        } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+        
+import {
+    getAuth,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    deleteUser,
+    sendEmailVerification,
+    updateProfile,
+    reload,
+    onAuthStateChanged,
+    signOut
+} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+
         import {
             getFirestore,
             collection,
@@ -474,6 +478,8 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         let unsubscribeReferralCodes = null;
+        let signupInProgress = false;
+        let preserveLoginMessage = false;
 
         // Kategori transaksi
         const categoriesMap = {
@@ -521,6 +527,7 @@
         window.showLoginForm = showLoginForm;
 
         function showSignupForm() {
+            preserveLoginMessage = false;
             document.querySelector('#loginScreen .mt-6').classList.add('hidden');
             document.getElementById('signupFormPanel').classList.remove('hidden');
             const b1=document.getElementById('loginTabButton'), b2=document.getElementById('signupTabButton');
@@ -538,47 +545,133 @@
         }
 
         async function signup() {
-            const name=document.getElementById('signupName').value.trim();
-            const email=document.getElementById('signupEmail').value.trim().toLowerCase();
-            const password=document.getElementById('signupPassword').value;
-            const password2=document.getElementById('signupPassword2').value;
-            const code=document.getElementById('signupReferral').value.trim().toUpperCase();
-            const message=document.getElementById('loginMessage');
-            const button=document.getElementById('signupButton');
-            message.textContent='';
-            if(!name || !email || !password || !password2 || !code){ message.textContent='Semua data pendaftaran wajib diisi.'; return; }
-            if(password.length<6){ message.textContent='Sandi minimal 6 karakter.'; return; }
-            if(password!==password2){ message.textContent='Ulangi sandi tidak sama.'; return; }
-            button.disabled=true; button.innerHTML='<i class="fa-solid fa-spinner fa-spin mr-1"></i> Mendaftar...';
-            let createdUser=null;
+            const name = document.getElementById('signupName').value.trim();
+            const email = document.getElementById('signupEmail').value.trim().toLowerCase();
+            const password = document.getElementById('signupPassword').value;
+            const password2 = document.getElementById('signupPassword2').value;
+            const code = document.getElementById('signupReferral').value.trim().toUpperCase();
+            const message = document.getElementById('loginMessage');
+            const button = document.getElementById('signupButton');
+
+            message.textContent = '';
+            preserveLoginMessage = false;
+
+            if (!name || !email || !password || !password2 || !code) {
+                message.textContent = 'Semua data pendaftaran wajib diisi, termasuk kode referral.';
+                return;
+            }
+            if (password.length < 6) {
+                message.textContent = 'Sandi minimal 6 karakter.';
+                return;
+            }
+            if (password !== password2) {
+                message.textContent = 'Ulangi sandi tidak sama.';
+                return;
+            }
+
+            button.disabled = true;
+            button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Mendaftar...';
+
+            let createdUser = null;
+            let profileSaved = false;
+            signupInProgress = true;
+
             try {
-                const codeRef=doc(db,'referralCodes',code);
-                const codeSnap=await getDoc(codeRef);
-                if(!codeSnap.exists() || codeSnap.data().active!==true || (Number(codeSnap.data().uses||0)>=Number(codeSnap.data().maxUses||1))){ throw new Error('INVALID_REFERRAL'); }
-                const cred=await createUserWithEmailAndPassword(auth,email,password);
-                createdUser=cred.user;
-                const userRef=doc(db,'users',email);
-                await runTransaction(db, async tx=>{
-                    const fresh=await tx.get(codeRef);
-                    if(!fresh.exists()) throw new Error('INVALID_REFERRAL');
-                    const d=fresh.data(); const uses=Number(d.uses||0), max=Number(d.maxUses||1);
-                    if(d.active!==true || uses>=max) throw new Error('REFERRAL_USED');
-                    tx.update(codeRef,{uses:uses+1,lastUsedAt:serverTimestamp(),lastUsedEmail:email,active:(uses+1>=max)?false:true});
-                    tx.set(userRef,{name,email,role:'viewer',status:'pending',referralCodeUsed:code,referredBy:d.createdByEmail||'',emailVerified:false,createdAt:serverTimestamp()});
+                // Periksa kode sebelum membuat akun Auth.
+                const codeRef = doc(db, 'referralCodes', code);
+                const codeSnap = await getDoc(codeRef);
+                if (!codeSnap.exists()) throw new Error('INVALID_REFERRAL');
+
+                const codeData = codeSnap.data();
+                const currentUses = Number(codeData.uses || 0);
+                const maxUses = Number(codeData.maxUses || 1);
+                if (codeData.active !== true || currentUses >= maxUses) {
+                    throw new Error('REFERRAL_USED');
+                }
+
+                const cred = await createUserWithEmailAndPassword(auth, email, password);
+                createdUser = cred.user;
+
+                await updateProfile(createdUser, { displayName: name });
+
+                const userRef = doc(db, 'users', email);
+                // Validasi ulang kode dalam transaksi agar kuota tidak terpakai ganda.
+                await runTransaction(db, async (tx) => {
+                    const fresh = await tx.get(codeRef);
+                    if (!fresh.exists()) throw new Error('INVALID_REFERRAL');
+
+                    const data = fresh.data();
+                    const uses = Number(data.uses || 0);
+                    const max = Number(data.maxUses || 1);
+                    if (data.active !== true || uses >= max) {
+                        throw new Error('REFERRAL_USED');
+                    }
+
+                    tx.update(codeRef, {
+                        uses: uses + 1,
+                        lastUsedAt: serverTimestamp(),
+                        lastUsedEmail: email,
+                        active: uses + 1 >= max ? false : true
+                    });
+                    tx.set(userRef, {
+                        name,
+                        email,
+                        role: 'viewer',
+                        status: 'pending',
+                        referralCodeUsed: code,
+                        referredBy: data.createdByEmail || '',
+                        emailVerified: false,
+                        createdAt: serverTimestamp()
+                    });
                 });
+                profileSaved = true;
+
+                // Kirim satu kali menggunakan verifikasi email bawaan Firebase.
                 await sendEmailVerification(createdUser);
-                message.textContent='Akun berhasil dibuat. Cek email untuk verifikasi, lalu kembali ke sini untuk masuk.';
-                document.getElementById('signupName').value=''; document.getElementById('signupEmail').value=''; document.getElementById('signupPassword').value=''; document.getElementById('signupPassword2').value=''; document.getElementById('signupReferral').value='';
-                await signOut(auth); showLoginForm();
-            } catch(error) {
-                console.error(error);
-                if(error.message==='INVALID_REFERRAL' || error.message==='REFERRAL_USED') message.textContent='Kode referral tidak valid atau sudah habis digunakan.';
-                else if(error.code==='auth/email-already-in-use') message.textContent='Email sudah terdaftar.';
-                else if(error.code==='auth/invalid-email') message.textContent='Format email tidak valid.';
-                else if(error.code==='auth/weak-password') message.textContent='Sandi terlalu lemah. Gunakan minimal 6 karakter.';
-                else message.textContent='Pendaftaran gagal. Coba lagi.';
-                if(createdUser) { try { await signOut(auth); } catch(e){} }
-            } finally { button.disabled=false; button.innerHTML='<i class="fa-solid fa-user-plus mr-1"></i> Daftar Akun'; }
+
+                document.getElementById('signupName').value = '';
+                document.getElementById('signupEmail').value = '';
+                document.getElementById('signupPassword').value = '';
+                document.getElementById('signupPassword2').value = '';
+                document.getElementById('signupReferral').value = '';
+
+                signupInProgress = false;
+                preserveLoginMessage = true;
+                await signOut(auth);
+                showLoginForm();
+                message.textContent = 'Akun berhasil dibuat. Tautan verifikasi dikirim ke ' + email + '. Periksa kotak masuk atau folder spam, lalu masuk kembali setelah verifikasi.';
+            } catch (error) {
+                console.error('Signup error:', error);
+
+                if (createdUser && !profileSaved) {
+                    // Bersihkan akun Auth jika profil dan pemakaian referral gagal disimpan.
+                    try { await deleteUser(createdUser); } catch (deleteError) {
+                        console.error('Gagal membersihkan akun Auth:', deleteError);
+                    }
+                }
+                if (createdUser) {
+                    preserveLoginMessage = true;
+                    try { await signOut(auth); } catch (signOutError) {}
+                }
+
+                if (error.message === 'INVALID_REFERRAL' || error.message === 'REFERRAL_USED') {
+                    message.textContent = 'Kode referral tidak valid, nonaktif, atau sudah habis digunakan.';
+                } else if (error.code === 'auth/email-already-in-use') {
+                    message.textContent = 'Email sudah terdaftar.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message.textContent = 'Format email tidak valid.';
+                } else if (error.code === 'auth/weak-password') {
+                    message.textContent = 'Sandi terlalu lemah. Gunakan minimal 6 karakter.';
+                } else if (createdUser && profileSaved) {
+                    message.textContent = 'Akun sudah dibuat, tetapi email verifikasi gagal dikirim. Coba masuk dan gunakan opsi kirim ulang verifikasi.';
+                } else {
+                    message.textContent = 'Pendaftaran gagal. Periksa koneksi dan Firestore Rules, lalu coba lagi.';
+                }
+            } finally {
+                signupInProgress = false;
+                button.disabled = false;
+                button.innerHTML = '<i class="fa-solid fa-user-plus mr-1"></i> Daftar Akun';
+            }
         }
         window.signup=signup;
 
@@ -601,6 +694,7 @@
         window.checkVerification=checkVerification;
 
         async function login() {
+            preserveLoginMessage = false;
             const email = document.getElementById('loginEmail').value.trim().toLowerCase();
             const password = document.getElementById('loginPassword').value;
             const message = document.getElementById('loginMessage');
@@ -746,6 +840,8 @@
         onAuthStateChanged(auth, async (user) => {
             currentUser = user;
 
+            if (signupInProgress && user) return;
+
             if (!user) {
                 currentRole = null;
                 transactions = [];
@@ -755,7 +851,7 @@
                 }
                 document.body.classList.remove('viewer-mode');
                 document.getElementById('loginScreen').classList.remove('hidden');
-                document.getElementById('loginMessage').textContent = '';
+                if (!preserveLoginMessage) document.getElementById('loginMessage').textContent = '';
                 document.getElementById('loginEmail').value = '';
                 document.getElementById('loginPassword').value = '';
                 return;
