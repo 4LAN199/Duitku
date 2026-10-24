@@ -309,6 +309,24 @@
         </section>
 
         <section id="financeView" class="space-y-6" aria-label="Keuangan">
+        <section id="approvalPanel" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-amber-100" aria-label="Persetujuan transaksi">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+                <div>
+                    <h2 id="approvalPanelTitle" class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-clipboard-check text-amber-600"></i> Persetujuan Transaksi</h2>
+                    <p id="approvalPanelDescription" class="text-sm text-slate-500 mt-1">Pengeluaran dari Pengedit tidak mengubah saldo sebelum disetujui Admin.</p>
+                </div>
+                <span id="pendingCount" class="inline-flex items-center rounded-full bg-amber-50 text-amber-700 px-3 py-1 text-xs font-semibold">0 pengajuan</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead><tr class="border-b border-slate-100 text-slate-400 text-xs uppercase font-semibold">
+                        <th class="py-3 px-3">Tanggal</th><th class="py-3 px-3">Pengaju</th><th class="py-3 px-3">Keterangan</th><th class="py-3 px-3">Kategori</th><th class="py-3 px-3 text-right">Jumlah</th><th class="py-3 px-3">Status</th><th class="py-3 px-3 text-center">Aksi</th>
+                    </tr></thead>
+                    <tbody id="approvalList" class="divide-y divide-slate-100 text-sm"></tbody>
+                </table>
+            </div>
+            <p class="text-xs text-slate-400 mt-3">Saldo, ringkasan, grafik, dan riwayat hanya menghitung transaksi yang disetujui (serta transaksi lama yang dibuat sebelum fitur persetujuan).</p>
+        </section>
         <section class="sr-only">
             <h2>Aplikasi Keuangan Pribadi Duitku</h2>
             <p>Duitku membantu mencatat pemasukan, pengeluaran, saldo, kategori, dan riwayat transaksi keuangan pribadi.</p>
@@ -393,7 +411,7 @@
                         <input type="date" id="date" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition" required>
                     </div>
 
-                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-xl transition shadow-sm text-sm">
+                    <button id="transactionSubmitButton" type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-xl transition shadow-sm text-sm">
                         Simpan Transaksi
                     </button>
                 </form>
@@ -1121,6 +1139,18 @@ import {
 
             const resetButton = document.getElementById('editOnly');
             if (resetButton) resetButton.style.display = isAdmin ? '' : 'none';
+            const approvalPanel = document.getElementById('approvalPanel');
+            const approvalTitle = document.getElementById('approvalPanelTitle');
+            const approvalDescription = document.getElementById('approvalPanelDescription');
+            if (approvalPanel) approvalPanel.classList.toggle('hidden', !(isAdmin || isEditor));
+            if (approvalTitle) approvalTitle.innerHTML = isAdmin
+                ? '<i class="fa-solid fa-clipboard-check text-amber-600"></i> Persetujuan Transaksi'
+                : '<i class="fa-solid fa-clipboard-list text-indigo-600"></i> Pengajuan Saya';
+            if (approvalDescription) approvalDescription.textContent = isAdmin
+                ? 'Periksa pengeluaran yang diajukan Pengedit. Saldo baru berubah setelah kamu menyetujui.'
+                : 'Pengeluaran yang kamu ajukan menunggu persetujuan Admin. Pengajuan yang ditolak akan tampil di sini.';
+            const submitButton = document.getElementById('transactionSubmitButton');
+            if (submitButton) submitButton.textContent = isEditor ? 'Ajukan Pengeluaran' : 'Simpan Transaksi';
             const referralPanel = document.getElementById('adminReferralPanel');
             if (referralPanel) referralPanel.classList.toggle('hidden', !isAdmin);
 
@@ -1191,15 +1221,16 @@ import {
             updateChart();
             applyRolePermissions();
             enforceEditorFields();
+            renderApprovalQueue();
         }
 
         function updateSummary() {
             let totalIncome = 0;
             let totalExpense = 0;
 
-            transactions.forEach(tx => {
+            getFinancialTransactions().forEach(tx => {
                 if (tx.type === 'income') totalIncome += Number(tx.amount) || 0;
-                else totalExpense += Number(tx.amount) || 0;
+                else if (tx.type === 'expense') totalExpense += Number(tx.amount) || 0;
             });
 
             const totalSaldo = totalIncome - totalExpense;
@@ -1214,7 +1245,7 @@ import {
             const tbody = document.getElementById('transactionList');
             tbody.innerHTML = '';
 
-            const filtered = transactions.filter(tx => {
+            const filtered = getFinancialTransactions().filter(tx => {
                 const matchType = filterType === 'all' || tx.type === filterType;
                 const matchCategory = filterCategory === 'all' || tx.category === filterCategory;
                 return matchType && matchCategory;
@@ -1266,8 +1297,9 @@ import {
 
         function updateChart() {
             const expenseCategories = ['Makanan', 'Transport', 'Belanja', 'Hiburan', 'Lainnya'];
+            const financialTransactions = getFinancialTransactions();
             const categoryTotals = expenseCategories.map(cat =>
-                transactions
+                financialTransactions
                     .filter(tx => tx.type === 'expense' && tx.category === cat)
                     .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0)
             );
@@ -1382,6 +1414,88 @@ import {
         // =========================
         // Transaksi Firestore
         // =========================
+        function getFinancialTransactions() {
+            // Dokumen lama yang belum memiliki status tetap dihitung sebagai transaksi sah.
+            return transactions.filter(tx => !tx.status || tx.status === 'approved');
+        }
+
+        function renderApprovalQueue() {
+            const panel = document.getElementById('approvalPanel');
+            const tbody = document.getElementById('approvalList');
+            const count = document.getElementById('pendingCount');
+            if (!panel || !tbody || !count) return;
+
+            const isAdmin = currentRole === 'admin';
+            const myEmail = String(currentUser?.email || '').toLowerCase();
+            const visibleItems = isAdmin
+                ? transactions.filter(tx => tx.status === 'pending')
+                : transactions.filter(tx => String(tx.createdBy || '').toLowerCase() === myEmail && ['pending', 'rejected'].includes(tx.status));
+
+            count.textContent = isAdmin
+                ? `${visibleItems.length} menunggu persetujuan`
+                : `${visibleItems.filter(tx => tx.status === 'pending').length} menunggu · ${visibleItems.filter(tx => tx.status === 'rejected').length} ditolak`;
+
+            if (!visibleItems.length) {
+                tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-slate-400">${isAdmin ? 'Belum ada pengajuan yang menunggu persetujuan.' : 'Belum ada pengajuan tertunda atau ditolak.'}</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = visibleItems.map(tx => {
+                const status = tx.status === 'pending'
+                    ? '<span class="rounded-full bg-amber-50 text-amber-700 px-2 py-1 text-xs font-semibold">Menunggu</span>'
+                    : '<span class="rounded-full bg-rose-50 text-rose-700 px-2 py-1 text-xs font-semibold">Ditolak</span>';
+                const actions = isAdmin && tx.status === 'pending'
+                    ? `<div class="flex justify-center gap-2"><button type="button" onclick="reviewTransaction('${encodeURIComponent(tx.id)}','approved')" class="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 text-xs font-semibold"><i class="fa-solid fa-check mr-1"></i> Setujui</button><button type="button" onclick="reviewTransaction('${encodeURIComponent(tx.id)}','rejected')" class="rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 px-3 py-2 text-xs font-semibold"><i class="fa-solid fa-xmark mr-1"></i> Tolak</button></div>`
+                    : (tx.status === 'rejected' && tx.rejectionReason ? `<span class="text-xs text-slate-500" title="${escapeHtml(tx.rejectionReason)}">Alasan: ${escapeHtml(tx.rejectionReason)}</span>` : '<span class="text-xs text-slate-400">Tidak ada aksi</span>');
+                return `<tr class="hover:bg-slate-50">
+                    <td class="py-3 px-3 text-xs text-slate-500 whitespace-nowrap">${escapeHtml(tx.date || '-')}</td>
+                    <td class="py-3 px-3 text-xs text-slate-600">${escapeHtml(tx.createdBy || '-')}</td>
+                    <td class="py-3 px-3 font-medium text-slate-800">${escapeHtml(tx.description || '')}</td>
+                    <td class="py-3 px-3"><span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-full text-xs">${escapeHtml(tx.category || '')}</span></td>
+                    <td class="py-3 px-3 text-right font-semibold text-rose-600 whitespace-nowrap">− ${formatRupiah(Number(tx.amount) || 0)}</td>
+                    <td class="py-3 px-3">${status}</td>
+                    <td class="py-3 px-3 text-center">${actions}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        async function reviewTransaction(encodedId, decision) {
+            if (currentRole !== 'admin') {
+                showPopup('error', 'Akses ditolak', 'Hanya Admin yang dapat memutuskan pengajuan transaksi.');
+                return;
+            }
+            if (!['approved', 'rejected'].includes(decision)) return;
+            const id = decodeURIComponent(String(encodedId || ''));
+            let rejectionReason = '';
+            if (decision === 'rejected') {
+                const answer = window.prompt('Alasan penolakan (opsional):', '');
+                if (answer === null) return;
+                rejectionReason = answer.trim().slice(0, 300);
+            }
+            try {
+                const txRef = doc(db, 'transactions', id);
+                const txSnap = await getDoc(txRef);
+                if (!txSnap.exists()) throw new Error('TRANSACTION_NOT_FOUND');
+                if (txSnap.data().status !== 'pending') {
+                    showPopup('warning', 'Pengajuan sudah diproses', 'Muat ulang data untuk melihat status terbaru.');
+                    return;
+                }
+                await updateDoc(txRef, {
+                    status: decision,
+                    reviewedBy: currentUser?.email || '',
+                    reviewedAt: serverTimestamp(),
+                    rejectionReason: decision === 'rejected' ? rejectionReason : ''
+                });
+                showPopup('success', decision === 'approved' ? 'Transaksi disetujui' : 'Transaksi ditolak', decision === 'approved'
+                    ? 'Transaksi masuk ke saldo dan riwayat keuangan.'
+                    : 'Pengajuan ditolak dan tidak mengubah saldo.');
+            } catch (error) {
+                console.error('Gagal memproses pengajuan:', error);
+                showPopup('error', 'Gagal memproses pengajuan', 'Periksa Firestore Rules versi persetujuan transaksi dan coba lagi.');
+            }
+        }
+        window.reviewTransaction = reviewTransaction;
+
         async function addTransaction(e) {
             e.preventDefault();
             if (currentRole !== 'editor' && currentRole !== 'admin') return;
@@ -1399,7 +1513,7 @@ import {
 
             const type = selectedType.value;
             if (currentRole === 'editor' && type !== 'expense') {
-                showPopup('warning', 'Transaksi tidak diizinkan', 'Pengedit hanya dapat mencatat pengeluaran.');
+                showPopup('warning', 'Transaksi tidak diizinkan', 'Pengedit hanya dapat mengajukan pengeluaran.');
                 return;
             }
 
@@ -1412,11 +1526,12 @@ import {
                 showPopup('warning', 'Jumlah tidak valid', 'Jumlah uang harus lebih besar dari 0.');
                 return;
             }
-            if (!date || !description) {
-                showPopup('warning', 'Data belum lengkap', 'Keterangan dan tanggal wajib diisi.');
+            if (!date || !description || !category) {
+                showPopup('warning', 'Data belum lengkap', 'Keterangan, kategori, dan tanggal wajib diisi.');
                 return;
             }
 
+            const isEditor = currentRole === 'editor';
             try {
                 await addDoc(collection(db, 'transactions'), {
                     type,
@@ -1425,16 +1540,20 @@ import {
                     description,
                     date,
                     createdBy: currentUser?.email || '',
+                    createdByUid: currentUser?.uid || '',
+                    status: isEditor ? 'pending' : 'approved',
                     createdAt: serverTimestamp()
                 });
 
                 document.getElementById('amount').value = '';
                 document.getElementById('description').value = '';
                 document.getElementById('date').valueAsDate = new Date();
-                showPopup('success', 'Transaksi berhasil', type === 'income' ? 'Pemasukan berhasil ditambahkan.' : 'Pengeluaran berhasil ditambahkan.');
+                showPopup(isEditor ? 'info' : 'success', isEditor ? 'Pengajuan terkirim' : 'Transaksi berhasil', isEditor
+                    ? 'Pengeluaran menunggu persetujuan Admin. Saldo belum berubah.'
+                    : (type === 'income' ? 'Pemasukan berhasil ditambahkan.' : 'Pengeluaran berhasil dicatat dan langsung masuk ke saldo.'));
             } catch (error) {
                 console.error(error);
-                showPopup('error', 'Transaksi gagal', 'Transaksi tidak dapat disimpan. Periksa koneksi internet atau Firestore Rules.');
+                showPopup('error', isEditor ? 'Pengajuan gagal' : 'Transaksi gagal', 'Data tidak dapat disimpan. Periksa Firestore Rules persetujuan transaksi.');
             }
         }
 
@@ -1488,6 +1607,7 @@ import {
         window.login = login;
         window.logout = logout;
         window.addTransaction = addTransaction;
+        window.reviewTransaction = reviewTransaction;
         window.deleteTransaction = deleteTransaction;
         window.resetData = resetData;
         window.updateCategories = updateCategories;
