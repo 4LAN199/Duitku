@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Duitku - Aplikasi Pencatatan Keuangan Pribadi</title>
+    <title>Duitku - Keuangan dan Manajemen</title>
     <meta name="description" content="Duitku adalah aplikasi pencatatan keuangan pribadi untuk membantu mencatat pemasukan, pengeluaran, saldo, dan riwayat transaksi dengan mudah.">
     <meta name="robots" content="index, follow">
     <meta name="author" content="Duitku">
@@ -114,6 +114,12 @@
         .viewer-mode .edit-only-field {
             opacity: .55;
         }
+
+        /* Navigasi tampilan Keuangan dan Manajemen */
+        .app-nav-button { color: #64748b; background: #f8fafc; border: 1px solid #e2e8f0; }
+        .app-nav-button:hover { color: #4338ca; background: #eef2ff; }
+        .app-nav-active { color: #fff !important; background: #4f46e5 !important; border-color: #4f46e5 !important; box-shadow: 0 3px 10px rgba(79,70,229,.18); }
+        #managementView, #financeView { min-width: 0; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-full flex flex-col">
@@ -244,7 +250,22 @@
         </div>
     </header>
 
+    <nav id="appNavigation" class="hidden bg-white border-b border-slate-200 shadow-sm" aria-label="Navigasi aplikasi">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+                <button id="financeNavButton" type="button" onclick="showAppView('finance')" class="app-nav-button app-nav-active rounded-xl px-4 py-2 text-sm font-semibold transition">
+                    <i class="fa-solid fa-wallet mr-2"></i>Keuangan
+                </button>
+                <button id="managementNavButton" type="button" onclick="showAppView('management')" class="app-nav-button hidden rounded-xl px-4 py-2 text-sm font-semibold transition">
+                    <i class="fa-solid fa-users-gear mr-2"></i>Manajemen
+                </button>
+            </div>
+            <p id="appNavigationHint" class="text-xs text-slate-400">Pencatatan keuangan pribadi</p>
+        </div>
+    </nav>
+
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full space-y-6">
+        <section id="managementView" class="hidden space-y-6" aria-label="Manajemen pengguna dan referral">
         <section id="adminReferralPanel" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
                 <div>
@@ -266,6 +287,28 @@
             </div>
         </section>
 
+        <section id="adminUserPanel" class="hidden bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fa-solid fa-users-gear text-indigo-600"></i> Manajemen Pengguna</h2>
+                    <p class="text-sm text-slate-500 mt-1">Admin dapat mengatur pengguna menjadi Pengedit atau Penonton. Role Admin tidak dapat diubah dari panel ini.</p>
+                </div>
+                <button type="button" onclick="refreshUserManagement()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2 rounded-xl text-sm"><i class="fa-solid fa-rotate mr-1"></i> Muat ulang</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead><tr class="border-b border-slate-100 text-slate-400 text-xs uppercase font-semibold">
+                        <th class="py-3 px-3">Nama</th><th class="py-3 px-3">Email</th><th class="py-3 px-3">Role</th><th class="py-3 px-3">Status</th><th class="py-3 px-3">Verifikasi</th><th class="py-3 px-3 text-center">Aksi</th>
+                    </tr></thead>
+                    <tbody id="userManagementList" class="divide-y divide-slate-100 text-sm"><tr><td colspan="6" class="py-6 text-center text-slate-400">Memuat pengguna...</td></tr></tbody>
+                </table>
+            </div>
+            <p class="text-xs text-slate-400 mt-3">Perubahan role disimpan ke Firestore. Pengguna mungkin perlu login ulang agar perubahan akses langsung diterapkan.</p>
+        </section>
+
+        </section>
+
+        <section id="financeView" class="space-y-6" aria-label="Keuangan">
         <section class="sr-only">
             <h2>Aplikasi Keuangan Pribadi Duitku</h2>
             <p>Duitku membantu mencatat pemasukan, pengeluaran, saldo, kategori, dan riwayat transaksi keuangan pribadi.</p>
@@ -423,6 +466,8 @@
             </div>
         </section>
 
+        </section>
+
     </main>
 
     <footer class="text-center py-6 text-xs text-slate-400">
@@ -478,6 +523,7 @@ import {
         const auth = getAuth(app);
         const db = getFirestore(app);
         let unsubscribeReferralCodes = null;
+        let unsubscribeManagedUsers = null;
         let signupInProgress = false;
         let preserveLoginMessage = false;
 
@@ -849,6 +895,13 @@ import {
                     unsubscribeTransactions();
                     unsubscribeTransactions = null;
                 }
+                if (unsubscribeReferralCodes) { unsubscribeReferralCodes(); unsubscribeReferralCodes = null; }
+                if (unsubscribeManagedUsers) { unsubscribeManagedUsers(); unsubscribeManagedUsers = null; }
+                document.getElementById('adminUserPanel')?.classList.add('hidden');
+                document.getElementById('adminReferralPanel')?.classList.add('hidden');
+                document.getElementById('appNavigation')?.classList.add('hidden');
+                document.getElementById('managementView')?.classList.add('hidden');
+                document.getElementById('financeView')?.classList.remove('hidden');
                 document.body.classList.remove('viewer-mode');
                 document.getElementById('loginScreen').classList.remove('hidden');
                 if (!preserveLoginMessage) document.getElementById('loginMessage').textContent = '';
@@ -861,6 +914,7 @@ import {
                 const profile = await loadCurrentUserRole(user);
                 currentRole = profile.role;
                 if (!user.emailVerified) {
+                    document.getElementById('appNavigation')?.classList.add('hidden');
                     document.getElementById('loginScreen').classList.remove('hidden');
                     document.getElementById('signupFormPanel').classList.add('hidden');
                     document.querySelector('#loginScreen .mt-6').classList.add('hidden');
@@ -877,7 +931,15 @@ import {
                 applyRolePermissions();
                 enforceEditorFields();
                 startRealtimeTransactions();
-                if(currentRole==='admin') startReferralRealtime();
+                if (currentRole === 'admin') {
+                    startReferralRealtime();
+                    startUserManagementRealtime();
+                } else {
+                    document.getElementById('adminUserPanel')?.classList.add('hidden');
+                    document.getElementById('adminReferralPanel')?.classList.add('hidden');
+                    if (unsubscribeManagedUsers) { unsubscribeManagedUsers(); unsubscribeManagedUsers = null; }
+                    if (unsubscribeReferralCodes) { unsubscribeReferralCodes(); unsubscribeReferralCodes = null; }
+                }
             } catch (error) {
                 console.error(error);
                 await signOut(auth);
@@ -921,6 +983,113 @@ import {
         window.copyReferralCode=copyReferralCode;
 
         // =========================
+        // Admin: Manajemen Pengguna
+        // =========================
+        function startUserManagementRealtime() {
+            if (currentRole !== 'admin') return;
+            const panel = document.getElementById('adminUserPanel');
+            if (panel) panel.classList.remove('hidden');
+            if (unsubscribeManagedUsers) unsubscribeManagedUsers();
+
+            unsubscribeManagedUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+                if (currentRole !== 'admin') return;
+                const users = snapshot.docs.map(item => ({ id: item.id, ...item.data() }))
+                    .sort((a, b) => String(a.name || a.email || a.id).localeCompare(String(b.name || b.email || b.id), 'id'));
+                const body = document.getElementById('userManagementList');
+                if (!body) return;
+                body.innerHTML = users.map(user => {
+                    const role = ['admin', 'editor', 'viewer'].includes(user.role) ? user.role : 'viewer';
+                    const isAdminAccount = role === 'admin';
+                    const isSelf = String(user.id).toLowerCase() === String(currentUser?.email || '').toLowerCase();
+                    const statusLabel = user.status === 'active' ? 'Aktif' : (user.status || 'Pending');
+                    const verifiedLabel = user.emailVerified === true ? 'Terverifikasi' : 'Belum';
+                    const roleLabel = role === 'admin' ? 'Admin' : (role === 'editor' ? 'Pengedit' : 'Penonton');
+                    const disabled = isAdminAccount || isSelf;
+                    return `<tr>
+                        <td class="py-3 px-3 font-medium text-slate-800">${escapeHtml(user.name || '-')}</td>
+                        <td class="py-3 px-3 text-slate-600">${escapeHtml(user.email || user.id)}</td>
+                        <td class="py-3 px-3">
+                            ${disabled
+                                ? `<span class="px-2 py-1 rounded-full text-xs ${isAdminAccount ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-600'}">${roleLabel}${isSelf ? ' (akun sendiri)' : ''}</span>`
+                                : `<select id="managedRole-${encodeURIComponent(user.id)}" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-2 text-xs" aria-label="Role ${escapeHtml(user.email || user.id)}">
+                                    <option value="viewer" ${role === 'viewer' ? 'selected' : ''}>Penonton</option>
+                                    <option value="editor" ${role === 'editor' ? 'selected' : ''}>Pengedit</option>
+                                   </select>`}
+                        </td>
+                        <td class="py-3 px-3"><span class="px-2 py-1 rounded-full text-xs ${user.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}">${escapeHtml(statusLabel)}</span></td>
+                        <td class="py-3 px-3 text-xs ${user.emailVerified === true ? 'text-emerald-700' : 'text-amber-700'}">${verifiedLabel}</td>
+                        <td class="py-3 px-3 text-center">${disabled ? '<span class="text-xs text-slate-400">-</span>' : `<button type="button" onclick="saveManagedUserRole('${encodeURIComponent(user.id)}')" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-3 py-2 text-xs font-semibold">Simpan</button>`}</td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="6" class="py-6 text-center text-slate-400">Belum ada pengguna.</td></tr>';
+            }, (error) => {
+                console.error('Gagal memuat daftar pengguna:', error);
+                const body = document.getElementById('userManagementList');
+                if (body) body.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-rose-600">Daftar pengguna gagal dimuat. Periksa Firestore Rules.</td></tr>';
+            });
+        }
+        window.refreshUserManagement = function () {
+            if (currentRole !== 'admin') return;
+            if (unsubscribeManagedUsers) { unsubscribeManagedUsers(); unsubscribeManagedUsers = null; }
+            startUserManagementRealtime();
+        };
+
+        async function saveManagedUserRole(encodedEmail) {
+            const email = decodeURIComponent(String(encodedEmail || ''));
+            if (currentRole !== 'admin') {
+                showPopup('error', 'Akses ditolak', 'Hanya Admin yang dapat mengatur role pengguna.');
+                return;
+            }
+            const normalizedEmail = String(email || '').toLowerCase();
+            if (!normalizedEmail || normalizedEmail === String(currentUser?.email || '').toLowerCase()) {
+                showPopup('warning', 'Tidak dapat mengubah role', 'Role akun Admin yang sedang digunakan tidak dapat diubah dari panel ini.');
+                return;
+            }
+            const select = document.getElementById('managedRole-' + encodeURIComponent(normalizedEmail));
+            const nextRole = select?.value;
+            if (!['viewer', 'editor'].includes(nextRole)) {
+                showPopup('error', 'Role tidak valid', 'Pilih Penonton atau Pengedit.');
+                return;
+            }
+            try {
+                const userRef = doc(db, 'users', normalizedEmail);
+                const userSnap = await getDoc(userRef);
+                if (!userSnap.exists()) throw new Error('USER_NOT_FOUND');
+                if (userSnap.data().role === 'admin') {
+                    showPopup('warning', 'Role dilindungi', 'Akun Admin tidak dapat diubah melalui panel ini.');
+                    return;
+                }
+                await updateDoc(userRef, { role: nextRole });
+                showPopup('success', 'Role diperbarui', `Role ${normalizedEmail} sekarang ${nextRole === 'editor' ? 'Pengedit' : 'Penonton'}.`);
+            } catch (error) {
+                console.error('Gagal mengubah role pengguna:', error);
+                showPopup('error', 'Gagal mengubah role', 'Perubahan ditolak. Pastikan Firestore Rules sudah diperbarui dan email pengguna benar.');
+            }
+        }
+        window.saveManagedUserRole = saveManagedUserRole;
+
+        // =========================
+        // Navigasi Keuangan / Manajemen
+        // =========================
+        function showAppView(view) {
+            const isManagement = view === 'management' && currentRole === 'admin';
+            const financeView = document.getElementById('financeView');
+            const managementView = document.getElementById('managementView');
+            const financeButton = document.getElementById('financeNavButton');
+            const managementButton = document.getElementById('managementNavButton');
+            if (financeView) financeView.classList.toggle('hidden', isManagement);
+            if (managementView) managementView.classList.toggle('hidden', !isManagement);
+            if (financeButton) financeButton.classList.toggle('app-nav-active', !isManagement);
+            if (managementButton) managementButton.classList.toggle('app-nav-active', isManagement);
+            if (isManagement && currentRole === 'admin' && !unsubscribeManagedUsers) {
+                startUserManagementRealtime();
+            }
+            if (isManagement && currentRole === 'admin' && !unsubscribeReferralCodes) {
+                startReferralRealtime();
+            }
+        }
+        window.showAppView = showAppView;
+
+        // =========================
         // Hak akses
         // =========================
         function applyRolePermissions() {
@@ -954,6 +1123,14 @@ import {
             if (resetButton) resetButton.style.display = isAdmin ? '' : 'none';
             const referralPanel = document.getElementById('adminReferralPanel');
             if (referralPanel) referralPanel.classList.toggle('hidden', !isAdmin);
+
+            const nav = document.getElementById('appNavigation');
+            const managementButton = document.getElementById('managementNavButton');
+            if (nav) nav.classList.remove('hidden');
+            if (managementButton) managementButton.classList.toggle('hidden', !isAdmin);
+            const navHint = document.getElementById('appNavigationHint');
+            if (navHint) navHint.textContent = isAdmin ? 'Admin · Keuangan dan manajemen pengguna' : (isEditor ? 'Pengedit · Catat pengeluaran' : 'Penonton · Hanya melihat data');
+            showAppView('finance');
 
             document.querySelectorAll('#transactionList button[onclick^="deleteTransaction"]').forEach(btn => {
                 btn.style.display = isAdmin ? '' : 'none';
