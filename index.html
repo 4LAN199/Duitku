@@ -976,6 +976,22 @@ import {
             return String(value ?? '').replace(/[&<>\"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#039;'}[ch]));
         }
 
+        // Tampilkan waktu pembuatan transaksi dalam zona waktu WIB (UTC+7).
+        // createdAt Firestore adalah Timestamp; transaksi lama memakai tanggal pilihan sebagai cadangan.
+        function formatTransactionDateTime(tx) {
+            let dateObj = null;
+            if (tx?.createdAt?.toDate) dateObj = tx.createdAt.toDate();
+            else if (tx?.createdAt instanceof Date) dateObj = tx.createdAt;
+            if (dateObj && !Number.isNaN(dateObj.getTime())) {
+                const parts = new Intl.DateTimeFormat('en-GB', {
+                    timeZone: 'Asia/Jakarta', day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+                }).formatToParts(dateObj).reduce((out, part) => { out[part.type] = part.value; return out; }, {});
+                return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}:${parts.second}`;
+            }
+            return tx?.date ? String(tx.date) : '-';
+        }
+
         // =========================
         // Admin: Referral Codes
         // =========================
@@ -1287,7 +1303,7 @@ import {
                 const amountSign = isIncome ? '+' : '-';
 
                 tr.innerHTML = `
-                    <td class="py-3 px-4 text-xs text-slate-500">${escapeHtml(tx.date || '')}</td>
+                    <td class="py-3 px-4 text-xs text-slate-500 whitespace-nowrap">${escapeHtml(formatTransactionDateTime(tx))} WIB</td>
                     <td class="py-3 px-4 text-xs text-slate-600"><div class="font-medium text-slate-800">${escapeHtml(tx.createdByName || tx.createdBy || '-')}</div><div class="text-slate-500 mt-1">Pemakai: ${escapeHtml(tx.spenderNickname || tx.createdByName || tx.createdBy || '-')}</div></td>
                     <td class="py-3 px-4 font-medium text-slate-800">${escapeHtml(tx.description || '')}</td>
                     <td class="py-3 px-4"><span class="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs font-medium">${escapeHtml(tx.category || '')}</span></td>
