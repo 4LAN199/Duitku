@@ -29,3 +29,23 @@
 .auth-message{min-height:17px;margin:12px 0 0;text-align:center;color:var(--green);font-size:11px}.auth-message.error{color:#d97765}
 .auth-legal{border-top:1px solid var(--line);padding-top:14px;margin:14px 0 0;color:var(--muted);font-size:9px;line-height:1.6;text-align:center}
 .profile-meta{flex:1;min-width:0}.profile-meta strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}.logout-button{border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:9px;width:31px;height:31px}.logout-button:hover{color:#d97765;border-color:#d97765}
+.logout-mobile {
+  display: none;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 8px 11px;
+  font-size: 11px;
+}
+
+.logout-mobile:hover {
+  color: #d97765;
+  border-color: #d97765;
+}
+
+@media (max-width: 740px) {
+  .logout-mobile {
+    display: inline-block;
+  }
+}
