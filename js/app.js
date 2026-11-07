@@ -357,3 +357,4 @@ $('statsReset').addEventListener('click', () => {
 
   toast('PDF berhasil dibuat dan diunduh.');
 });
+}); // Penutup DOMContentLoaded
