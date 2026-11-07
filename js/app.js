@@ -71,7 +71,37 @@ document.addEventListener('click', e => {
   }, 350);
 }
   const toggle=$('spaceToggle'),menu=$('spaceMenu');toggle.addEventListener('click',()=>{menu.hidden=!menu.hidden;toggle.setAttribute('aria-expanded',String(!menu.hidden))});document.querySelectorAll('[data-space]').forEach(o=>o.addEventListener('click',()=>{setSpace(o.dataset.space);menu.hidden=true;toggle.setAttribute('aria-expanded','false');toast(`Beralih ke ${labels[activeSpace]}`)}));document.addEventListener('click',e=>{if(!e.target.closest('.space-wrap')){menu.hidden=true;toggle.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
-  function go(page){const valid=['dashboard','transactions','statistics','reports'].includes(page)?page:'dashboard';document.querySelectorAll('.page-section').forEach(el=>el.hidden=el.id!==`page-${valid}`);document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===valid));const crumb=document.querySelector('header .crumb');crumb.innerHTML=`Ruang keuangan　/　<strong>${labels[activeSpace]}</strong>　/　${({dashboard:'Dashboard',transactions:'Transaksi',statistics:'Statistik',reports:'Laporan'})[valid]}`;history.replaceState(null,'',`#${valid}`);if(valid==='statistics')renderStats();if(valid==='reports')renderReport()}
+  function go(page) {
+  const valid = ['dashboard', 'transactions', 'statistics', 'reports']
+    .includes(page) ? page : 'dashboard';
+
+  const target = $(`page-${valid}`);
+
+  document.querySelectorAll('.page-section').forEach(el => {
+    el.hidden = el !== target;
+  });
+
+  document.querySelectorAll('[data-nav]').forEach(a => {
+    a.classList.toggle('active', a.dataset.nav === valid);
+  });
+
+  // Jalankan ulang animasi seperti transisi Dashboard
+  target.classList.remove('enter');
+  void target.offsetWidth;
+  target.classList.add('enter');
+
+  const crumb = document.querySelector('header .crumb');
+
+  crumb.innerHTML = `Ruang keuangan　/　
+    <strong>${labels[activeSpace]}</strong>　/　
+    ${{dashboard:'Dashboard',transactions:'Transaksi',
+       statistics:'Statistik',reports:'Laporan'}[valid]}`;
+
+  history.replaceState(null, '', `#${valid}`);
+
+  if (valid === 'statistics') renderStats();
+  if (valid === 'reports') renderReport();
+}
   document.querySelectorAll('[data-nav]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.nav)}));document.querySelectorAll('[data-go]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.go)}));
   function sums(list){return list.reduce((o,t)=>(o[t.type]+=Number(t.amount),o),{income:0,expense:0})}
   function renderAll() {
