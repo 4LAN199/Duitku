@@ -61,7 +61,15 @@
       }catch(err){message(err.message||"Gagal masuk.",true);}
     });
     $("forgotPassword").addEventListener("click",()=>message("Fitur reset kata sandi akan tersedia setelah Firebase Auth dihubungkan."));
-    $("logoutButton").addEventListener("click",()=>{showLogin();$("loginPassword").value="";});
+    function logout(){
+  showLogin();
+  $("loginPassword").value="";
+  $("registerPassword").value="";
+  $("registerConfirm").value="";
+}
+
+$("logoutButton").addEventListener("click", logout);
+$("logoutButtonMobile").addEventListener("click", logout);
     let session=null; try{session=JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch{}
     const user=session?.email?readUsers().find(u=>u.email===session.email):null;
     if(user) showApp(user); else showLogin();
