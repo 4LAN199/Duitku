@@ -80,10 +80,72 @@ document.addEventListener('click', e => {
   renderStats();
   renderReport();
 }
-  function renderDashboard(){const s=sums(transactions);$('dashBalance').textContent=money(s.income-s.expense);$('dashIncome').textContent=money(s.income);$('dashExpense').textContent=money(s.expense);$('dashIncomeCount').textContent=`${transactions.filter(t=>t.type==='income').length} transaksi`; $('dashExpenseCount').textContent=`${transactions.filter(t=>t.type==='expense').length} transaksi`;const list=[...transactions].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')).slice(0,5);$('recentTransactions').innerHTML=list.map(t=>rowHTML(t,false)).join('');$('recentEmpty').hidden=list.length>0}
+  function renderDashboard(){const s=sums(transactions);$('dashBalance').textContent=money(s.income-s.expense);$('dashIncome').textContent=money(s.income);$('dashExpense').textContent=money(s.expense);$('dashIncomeCount').textContent=`${transactions.filter(t=>t.type==='income').length} transaksi`; $('dashExpenseCount').textContent=`${transactions.filter(t=>t.type==='expense').length} transaksi`;const list=[...transactions].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')).slice(0,5);$('recentTransactions').innerHTML=list.map(t=>rowHTML(t,false)).join('');$('recentEmpty').hidden = transactions.length > 0;
   function rowHTML(t,actions=true){return `<div class="transaction-item"><span class="tx-icon ${t.type}">${t.type==='income'?'↙':'↗'}</span><span class="tx-info"><b>${esc(t.note)}</b><small>${esc(t.category)} · ${formatDate(t.date)}</small></span><strong class="amount ${t.type}">${t.type==='income'?'+':'−'} ${money(t.amount)}</strong>${actions?`<span class="tx-actions"><button data-edit="${t.id}" title="Edit">✎</button><button data-delete="${t.id}" title="Hapus">×</button></span>`:''}</div>`}
-  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function formatDate(d){return d?new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(d+'T00:00:00')):'-'}
-  function renderTransactions(){const q=$('transactionSearch').value.toLowerCase(),type=$('transactionType').value;const list=[...transactions].filter(t=>(type==='all'||t.type===type)&&(`${t.note} ${t.category}`).toLowerCase().includes(q)).sort((a,b)=>b.date.localeCompare(a.date));$('transactionRows').innerHTML=list.map(t=>`<tr><td>${formatDate(t.date)}</td><td>${esc(t.note)}</td><td>${esc(t.category)}</td><td><span class="pill ${t.type}">${t.type==='income'?'Pemasukan':'Pengeluaran'}</span></td><td class="amount ${t.type}">${t.type==='income'?'+':'−'} ${money(t.amount)}</td><td><button class="table-action" data-edit="${t.id}">Edit</button><button class="table-action danger" data-delete="${t.id}">Hapus</button></td></tr>`).join('');$('transactionEmpty').hidden=list.length>0}
+  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  function formatDate(d) {
+  return d
+    ? new Intl.DateTimeFormat('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        timeZone: 'Asia/Jakarta'
+      }).format(new Date(d + 'T00:00:00'))
+    : '-';
+}
+
+function formatTime(value) {
+  if (!value) return '-';
+
+  return new Intl.DateTimeFormat('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Jakarta'
+  }).format(new Date(value));
+}
+
+function creatorName(t) {
+  return t.createdByName || 'Tidak tercatat';
+}
+  function renderTransactions() {
+  const q = $('transactionSearch').value.toLowerCase();
+  const type = $('transactionType').value;
+
+  const list = [...transactions]
+    .filter(t =>
+      (type === 'all' || t.type === type) &&
+      (`${t.note} ${t.category} ${creatorName(t)}`).toLowerCase().includes(q)
+    )
+    .sort((a,b) =>
+      (b.createdAt || b.date).localeCompare(a.createdAt || a.date)
+    );
+
+  $('transactionRows').innerHTML = list.map(t => `
+    <tr>
+      <td>${formatDate(t.date)}</td>
+      <td>${formatTime(t.createdAt)}</td>
+      <td>${esc(t.note)}</td>
+      <td>${esc(t.category)}</td>
+      <td>
+        <span class="pill ${t.type}">
+          ${t.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+        </span>
+      </td>
+      <td class="amount ${t.type}">
+        ${t.type === 'income' ? '+' : '−'} ${money(t.amount)}
+      </td>
+      <td>${esc(creatorName(t))}</td>
+      <td>
+        <button class="table-action" data-edit="${t.id}">Edit</button>
+        <button class="table-action danger" data-delete="${t.id}">Hapus</button>
+      </td>
+    </tr>
+  `).join('');
+
+  // Pesan kosong hanya muncul jika ruang belum punya riwayat sama sekali.
+  $('transactionEmpty').hidden = transactions.length > 0;
+}
   function renderStats() {
   const from = $('statsFrom').value;
   const to = $('statsTo').value;
@@ -157,11 +219,64 @@ document.addEventListener('click', e => {
   `).join('');
 }
   function reportList(){const from=$('reportFrom').value,to=$('reportTo').value,type=$('reportType').value;return transactions.filter(t=>(!from||t.date>=from)&&(!to||t.date<=to)&&(type==='all'||t.type===type)).sort((a,b)=>b.date.localeCompare(a.date))}
-  function renderReport(){const list=reportList(),s=sums(list);$('reportIncome').textContent=money(s.income);$('reportExpense').textContent=money(s.expense);$('reportNet').textContent=money(s.income-s.expense);$('reportRows').innerHTML=list.map(t=>`<tr><td>${formatDate(t.date)}</td><td>${esc(t.note)}</td><td>${esc(t.category)}</td><td>${t.type==='income'?'Pemasukan':'Pengeluaran'}</td><td class="amount ${t.type}">${t.type==='income'?'+':'−'} ${money(t.amount)}</td></tr>`).join('');$('reportEmpty').hidden=list.length>0}
+  function renderReport(){const list=reportList(),s=sums(list);$('reportIncome').textContent=money(s.income);$('reportExpense').textContent=money(s.expense);$('reportNet').textContent=money(s.income-s.expense);$('reportRows').innerHTML=list.map(t=>`<tr><td>${formatDate(t.date)}</td><td>${esc(t.note)}</td><td>${esc(t.category)}</td><td>${t.type==='income'?'Pemasukan':'Pengeluaran'}</td><td class="amount ${t.type}">${t.type==='income'?'+':'−'} ${money(t.amount)}</td></tr>`).join('');$('reportEmpty').hidden = transactions.length > 0;
   function openModal(type='income',id=null){editingId=id;const t=id?transactions.find(x=>x.id===id):null;$('modalTitle').textContent=t?'Edit transaksi':'Tambah transaksi';$('formType').value=t?.type||type;$('formAmount').value=t?.amount||'';$('formNote').value=t?.note||'';$('formCategory').value=t?.category||'Makanan';$('formDate').value=t?.date||today();$('transactionModal').hidden=false;$('formAmount').focus()}
   function closeModal(){$('transactionModal').hidden=true;editingId=null;$('transactionForm').reset()}
   $('newTransaction').addEventListener('click',()=>openModal());document.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()=>openModal(b.dataset.add)));$('closeModal').addEventListener('click',closeModal);$('cancelModal').addEventListener('click',closeModal);$('transactionModal').addEventListener('click',e=>{if(e.target===$('transactionModal'))closeModal()});
-  $('transactionForm').addEventListener('submit',e=>{e.preventDefault();const amount=Number($('formAmount').value);if(!Number.isFinite(amount)||amount<=0){toast('Nominal harus lebih dari nol.');return}const data={id:editingId||`${Date.now()}-${Math.random().toString(16).slice(2)}`,type:$('formType').value,amount,note:$('formNote').value.trim(),category:$('formCategory').value,date:$('formDate').value,createdAt:new Date().toISOString()};if(!data.note||!data.date){toast('Lengkapi semua data transaksi.');return}if(editingId){transactions=transactions.map(t=>t.id===editingId?data:t)}else transactions.push(data);save();closeModal();renderAll();toast(editingId?'Transaksi berhasil diperbarui.':'Transaksi berhasil disimpan.');});
+  $('transactionForm').addEventListener('submit', e => {
+  e.preventDefault();
+
+  const amount = Number($('formAmount').value);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    toast('Nominal harus lebih dari nol.');
+    return;
+  }
+
+  const previous = editingId
+    ? transactions.find(t => t.id === editingId)
+    : null;
+
+  const data = {
+    id: editingId || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    type: $('formType').value,
+    amount,
+    note: $('formNote').value.trim(),
+    category: $('formCategory').value,
+    date: $('formDate').value,
+
+    // Waktu dan pembuat asli tidak berubah saat transaksi diedit.
+    createdAt: previous?.createdAt || new Date().toISOString(),
+
+    createdByName: previous?.createdByName ||
+      (editingId
+        ? 'Tidak tercatat'
+        : ($('profileName').textContent.trim() || 'Pengguna Duitku'))
+  };
+
+  if (!data.note || !data.date) {
+    toast('Lengkapi semua data transaksi.');
+    return;
+  }
+
+  if (editingId) {
+    transactions = transactions.map(t =>
+      t.id === editingId ? data : t
+    );
+  } else {
+    transactions.push(data);
+  }
+
+  save();
+  closeModal();
+  renderAll();
+
+  toast(
+    editingId
+      ? 'Transaksi berhasil diperbarui.'
+      : 'Transaksi berhasil disimpan.'
+  );
+});
   document.addEventListener('click',e=>{const edit=e.target.closest('[data-edit]'),del=e.target.closest('[data-delete]');if(edit)openModal('income',edit.dataset.edit);if(del){const t=transactions.find(x=>x.id===del.dataset.delete);if(t&&confirm(`Hapus transaksi “${t.note}”?`)){transactions=transactions.filter(x=>x.id!==t.id);save();renderAll();toast('Transaksi dihapus.')}}});
   ['transactionSearch','transactionType'].forEach(id=>$(id).addEventListener('input',renderTransactions));['statsFrom','statsTo'].forEach(id => {
   $(id).addEventListener('change', renderStats);
@@ -181,15 +296,64 @@ $('statsReset').addEventListener('click', () => {
     return;
   }
 
-  window.print();
-});
-  let saved = 'utama';
+  if (!window.jspdf?.jsPDF) {
+    toast('Library PDF belum berhasil dimuat. Periksa koneksi internet.');
+    return;
+  }
 
-try {
-  saved = localStorage.getItem('duitku-active-space-preview') || 'utama';
-} catch {}
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape' });
 
-setSpace(saved);
-go(location.hash.slice(1) || 'dashboard');
+  const sumsReport = sums(list);
 
+  doc.setFontSize(18);
+  doc.text('LAPORAN KEUANGAN DUITKU', 14, 18);
+
+  doc.setFontSize(10);
+  doc.text(`Ruang: ${labels[activeSpace]}`, 14, 27);
+  doc.text(`Tanggal ekspor: ${formatDate(today())}`, 14, 33);
+
+  doc.text(`Pemasukan: ${money(sumsReport.income)}`, 14, 43);
+  doc.text(`Pengeluaran: ${money(sumsReport.expense)}`, 95, 43);
+  doc.text(`Selisih: ${money(sumsReport.income - sumsReport.expense)}`, 190, 43);
+
+  doc.autoTable({
+    startY: 52,
+    head: [[
+      'Tanggal',
+      'Jam',
+      'Keterangan',
+      'Kategori',
+      'Jenis',
+      'Jumlah',
+      'Dicatat oleh'
+    ]],
+    body: list.map(t => [
+      formatDate(t.date),
+      formatTime(t.createdAt),
+      t.note,
+      t.category,
+      t.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
+      money(t.amount),
+      creatorName(t)
+    ]),
+    styles: {
+      fontSize: 9,
+      cellPadding: 3
+    },
+    headStyles: {
+      fillColor: [8, 127, 91]
+    },
+    alternateRowStyles: {
+      fillColor: [240, 248, 244]
+    },
+    margin: {
+      left: 14,
+      right: 14
+    }
+  });
+
+  doc.save(`Duitku-Laporan-${activeSpace}-${today()}.pdf`);
+
+  toast('PDF berhasil dibuat dan diunduh.');
 });
