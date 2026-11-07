@@ -80,7 +80,21 @@ document.addEventListener('click', e => {
   renderStats();
   renderReport();
 }
-  function renderDashboard(){const s=sums(transactions);$('dashBalance').textContent=money(s.income-s.expense);$('dashIncome').textContent=money(s.income);$('dashExpense').textContent=money(s.expense);$('dashIncomeCount').textContent=`${transactions.filter(t=>t.type==='income').length} transaksi`; $('dashExpenseCount').textContent=`${transactions.filter(t=>t.type==='expense').length} transaksi`;const list=[...transactions].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')).slice(0,5);$('recentTransactions').innerHTML=list.map(t=>rowHTML(t,false)).join('');$('recentEmpty').hidden = transactions.length > 0;
+  function renderDashboard(){
+  const s=sums(transactions);
+  $('dashBalance').textContent=money(s.income-s.expense);
+  $('dashIncome').textContent=money(s.income);
+  $('dashExpense').textContent=money(s.expense);
+  $('dashIncomeCount').textContent=`${transactions.filter(t=>t.type==='income').length} transaksi`;
+  $('dashExpenseCount').textContent=`${transactions.filter(t=>t.type==='expense').length} transaksi`;
+
+  const list=[...transactions]
+    .sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''))
+    .slice(0,5);
+
+  $('recentTransactions').innerHTML=list.map(t=>rowHTML(t,false)).join('');
+  $('recentEmpty').hidden = transactions.length > 0;
+}
   function rowHTML(t,actions=true){return `<div class="transaction-item"><span class="tx-icon ${t.type}">${t.type==='income'?'↙':'↗'}</span><span class="tx-info"><b>${esc(t.note)}</b><small>${esc(t.category)} · ${formatDate(t.date)}</small></span><strong class="amount ${t.type}">${t.type==='income'?'+':'−'} ${money(t.amount)}</strong>${actions?`<span class="tx-actions"><button data-edit="${t.id}" title="Edit">✎</button><button data-delete="${t.id}" title="Hapus">×</button></span>`:''}</div>`}
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function formatDate(d) {
@@ -219,7 +233,30 @@ function creatorName(t) {
   `).join('');
 }
   function reportList(){const from=$('reportFrom').value,to=$('reportTo').value,type=$('reportType').value;return transactions.filter(t=>(!from||t.date>=from)&&(!to||t.date<=to)&&(type==='all'||t.type===type)).sort((a,b)=>b.date.localeCompare(a.date))}
-  function renderReport(){const list=reportList(),s=sums(list);$('reportIncome').textContent=money(s.income);$('reportExpense').textContent=money(s.expense);$('reportNet').textContent=money(s.income-s.expense);$('reportRows').innerHTML=list.map(t=>`<tr><td>${formatDate(t.date)}</td><td>${esc(t.note)}</td><td>${esc(t.category)}</td><td>${t.type==='income'?'Pemasukan':'Pengeluaran'}</td><td class="amount ${t.type}">${t.type==='income'?'+':'−'} ${money(t.amount)}</td></tr>`).join('');$('reportEmpty').hidden = transactions.length > 0;
+  function renderReport(){
+  const list=reportList();
+  const s=sums(list);
+
+  $('reportIncome').textContent=money(s.income);
+  $('reportExpense').textContent=money(s.expense);
+  $('reportNet').textContent=money(s.income-s.expense);
+
+  $('reportRows').innerHTML=list.map(t=>`
+    <tr>
+      <td>${formatDate(t.date)}</td>
+      <td>${formatTime(t.createdAt)}</td>
+      <td>${esc(t.note)}</td>
+      <td>${esc(t.category)}</td>
+      <td>${t.type==='income'?'Pemasukan':'Pengeluaran'}</td>
+      <td class="amount ${t.type}">
+        ${t.type==='income'?'+':'−'} ${money(t.amount)}
+      </td>
+      <td>${esc(creatorName(t))}</td>
+    </tr>
+  `).join('');
+
+  $('reportEmpty').hidden = transactions.length > 0;
+}
   function openModal(type='income',id=null){editingId=id;const t=id?transactions.find(x=>x.id===id):null;$('modalTitle').textContent=t?'Edit transaksi':'Tambah transaksi';$('formType').value=t?.type||type;$('formAmount').value=t?.amount||'';$('formNote').value=t?.note||'';$('formCategory').value=t?.category||'Makanan';$('formDate').value=t?.date||today();$('transactionModal').hidden=false;$('formAmount').focus()}
   function closeModal(){$('transactionModal').hidden=true;editingId=null;$('transactionForm').reset()}
   $('newTransaction').addEventListener('click',()=>openModal());document.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()=>openModal(b.dataset.add)));$('closeModal').addEventListener('click',closeModal);$('cancelModal').addEventListener('click',closeModal);$('transactionModal').addEventListener('click',e=>{if(e.target===$('transactionModal'))closeModal()});
