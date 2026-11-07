@@ -87,38 +87,216 @@
 </header>
 
 <section class="welcome enter"><div><small class="eyebrow">RINGKASAN KEUANGAN</small><h1>Selamat datang di <span id="welcomeSpaceName">Duitku Utama</span>.</h1><p id="welcomeDescription">Pantau dan kelola keuanganmu dengan lebih mudah.</p></div><div class="date" id="today">Hari ini</div></section>
+
+<!-- DASHBOARD -->
 <section class="page-section" id="page-dashboard">
-<section class="stats enter delay">
-<article class="balance"><div>Total saldo <span>◈</span></div><strong id="dashBalance">Rp 0</strong><small id="firebaseNote">● Data tersimpan lokal untuk pratinjau</small><i></i></article>
-<article class="metric"><small>Pemasukan　↙</small><strong id="dashIncome">Rp 0</strong><p id="dashIncomeCount">Belum ada data</p><hr></article>
-<article class="metric"><small>Pengeluaran　↗</small><strong id="dashExpense">Rp 0</strong><p id="dashExpenseCount">Belum ada data</p><hr></article>
+
+  <section class="welcome enter">
+    <div>
+      <small class="eyebrow">RINGKASAN KEUANGAN</small>
+      <h1>Selamat datang di <span id="welcomeSpaceName">Duitku Utama</span>.</h1>
+      <p id="welcomeDescription">Pantau dan kelola keuanganmu dengan lebih mudah.</p>
+    </div>
+    <div class="date" id="today">Hari ini</div>
+  </section>
+
+  <section class="stats enter delay">
+    <article class="balance">
+      <div>Total saldo <span>◈</span></div>
+      <strong id="dashBalance">Rp 0</strong>
+      <small id="firebaseNote">● Data tersimpan lokal untuk pratinjau</small>
+      <i></i>
+    </article>
+    <article class="metric">
+      <small>Pemasukan　↙</small>
+      <strong id="dashIncome">Rp 0</strong>
+      <p id="dashIncomeCount">Belum ada data</p>
+      <hr>
+    </article>
+    <article class="metric">
+      <small>Pengeluaran　↗</small>
+      <strong id="dashExpense">Rp 0</strong>
+      <p id="dashExpenseCount">Belum ada data</p>
+      <hr>
+    </article>
+  </section>
+
+  <section class="columns enter later">
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <h3>Transaksi terbaru</h3>
+          <p>Aktivitas keuangan dari ruang aktif.</p>
+        </div>
+        <a href="#transactions" data-go="transactions">Lihat semua →</a>
+      </div>
+      <div id="recentTransactions" class="transaction-list"></div>
+      <div class="empty" id="recentEmpty">
+        <b>⇄</b>
+        <strong>Belum ada transaksi</strong>
+        <p>Tambahkan pemasukan atau pengeluaran untuk memulai.</p>
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="panel-head">
+        <div>
+          <h3>Akses cepat</h3>
+          <p>Kelola aktivitas keuanganmu.</p>
+        </div>
+      </div>
+      <button class="quick" data-add="income">＋　<span><b>Tambah pemasukan</b><small>Catat uang yang diterima</small></span> →</button>
+      <button class="quick" data-add="expense">−　<span><b>Tambah pengeluaran</b><small>Catat uang yang digunakan</small></span> →</button>
+      <div class="note">✦　Catat transaksi secara rutin agar laporan keuanganmu lebih akurat.</div>
+    </article>
+  </section>
 </section>
-<section class="columns enter later">
-<article class="panel"><div class="panel-head"><div><h3>Transaksi terbaru</h3><p>Aktivitas keuangan dari ruang aktif.</p></div><a href="#transactions" data-go="transactions">Lihat semua →</a></div><div id="recentTransactions" class="transaction-list"></div><div class="empty" id="recentEmpty"><b>⇄</b><strong>Belum ada transaksi</strong><p>Tambahkan pemasukan atau pengeluaran untuk memulai.</p></div></article>
-<article class="panel"><div class="panel-head"><div><h3>Akses cepat</h3><p>Kelola aktivitas keuanganmu.</p></div></div><button class="quick" data-add="income">＋　<span><b>Tambah pemasukan</b><small>Catat uang yang diterima</small></span> →</button><button class="quick" data-add="expense">−　<span><b>Tambah pengeluaran</b><small>Catat uang yang digunakan</small></span> →</button><div class="note">✦　Catat transaksi secara rutin agar laporan keuanganmu lebih akurat.</div></article>
-</section></section>
+
+<!-- TRANSAKSI -->
 <section class="page-section" id="page-transactions" hidden>
-<div class="section-heading"><div><small class="eyebrow">PENCATATAN KEUANGAN</small><h1>Transaksi</h1><p>Catat dan kelola pemasukan serta pengeluaran.</p></div><button class="primary" id="newTransaction">＋ Tambah transaksi</button></div>
-<article class="panel"><div class="toolbar"><input id="transactionSearch" type="search" placeholder="Cari keterangan atau kategori..."><select id="transactionType"><option value="all">Semua jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select></div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Kategori</th><th>Jenis</th><th>Jumlah</th><th>Aksi</th></tr></thead><tbody id="transactionRows"></tbody></table></div><div class="empty compact" id="transactionEmpty" hidden><b>⇄</b><strong>Belum ada transaksi</strong><p>Transaksi yang kamu tambahkan akan tampil di sini.</p></div></article>
+  <div class="section-heading">
+    <div>
+      <small class="eyebrow">PENCATATAN KEUANGAN</small>
+      <h1>Transaksi</h1>
+      <p>Catat dan kelola pemasukan serta pengeluaran.</p>
+    </div>
+    <button class="primary" id="newTransaction">＋ Tambah transaksi</button>
+  </div>
+
+  <article class="panel transaction-panel">
+    <div class="toolbar">
+      <input id="transactionSearch" type="search" placeholder="Cari keterangan atau kategori...">
+      <select id="transactionType">
+        <option value="all">Semua jenis</option>
+        <option value="income">Pemasukan</option>
+        <option value="expense">Pengeluaran</option>
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tanggal</th><th>Keterangan</th><th>Kategori</th>
+            <th>Jenis</th><th>Jumlah</th><th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="transactionRows"></tbody>
+      </table>
+    </div>
+    <div class="empty compact" id="transactionEmpty" hidden>
+      <b>⇄</b><strong>Belum ada transaksi</strong>
+      <p>Transaksi yang kamu tambahkan akan tampil di sini.</p>
+    </div>
+  </article>
 </section>
+
+<!-- STATISTIK -->
 <section class="page-section" id="page-statistics" hidden>
-<div class="section-heading"><div><small class="eyebrow">ANALISIS KEUANGAN</small><h1>Statistik</h1><p>Pahami pola pemasukan dan pengeluaranmu.</p></div>
-<div class="stats-filters">
-  <input type="date" id="statsFrom" aria-label="Tanggal awal">
-  <span>—</span>
-  <input type="date" id="statsTo" aria-label="Tanggal akhir">
-  <button type="button" id="statsReset">Reset</button>
-</div>
-<div class="stats stats-three"><article class="metric"><small>Total pemasukan</small><strong id="statsIncome">Rp 0</strong><p>Akumulasi pemasukan</p></article><article class="metric"><small>Total pengeluaran</small><strong id="statsExpense">Rp 0</strong><p>Akumulasi pengeluaran</p></article><article class="metric"><small>Selisih</small><strong id="statsNet">Rp 0</strong><p>Pemasukan dikurangi pengeluaran</p></article></div>
-<div class="analysis-grid"><article class="panel"><h3>Pengeluaran berdasarkan kategori</h3><div id="categoryChart" class="category-chart"><div class="empty compact"><b>◔</b><strong>Belum ada data</strong><p>Grafik muncul setelah ada transaksi pengeluaran.</p></div></div></article><article class="panel"><h3>Ringkasan kategori</h3><div id="categoryBreakdown" class="breakdown"></div></article></div>
+  <div class="section-heading statistics-heading">
+    <div>
+      <small class="eyebrow">ANALISIS KEUANGAN</small>
+      <h1>Statistik</h1>
+      <p>Pahami pola pemasukan dan pengeluaranmu.</p>
+    </div>
+
+    <div class="stats-filters">
+      <input type="date" id="statsFrom" aria-label="Tanggal awal">
+      <span>—</span>
+      <input type="date" id="statsTo" aria-label="Tanggal akhir">
+      <button type="button" id="statsReset">Reset</button>
+    </div>
+  </div>
+
+  <div class="stats stats-three">
+    <article class="metric">
+      <small>Total pemasukan</small>
+      <strong id="statsIncome">Rp 0</strong>
+      <p>Akumulasi pemasukan</p>
+    </article>
+    <article class="metric">
+      <small>Total pengeluaran</small>
+      <strong id="statsExpense">Rp 0</strong>
+      <p>Akumulasi pengeluaran</p>
+    </article>
+    <article class="metric">
+      <small>Selisih</small>
+      <strong id="statsNet">Rp 0</strong>
+      <p>Pemasukan dikurangi pengeluaran</p>
+    </article>
+  </div>
+
+  <div class="analysis-grid">
+    <article class="panel analysis-chart-panel">
+      <h3>Pengeluaran berdasarkan kategori</h3>
+      <div id="categoryChart" class="category-chart">
+        <div class="empty compact">
+          <b>◔</b>
+          <strong>Belum ada data</strong>
+          <p>Grafik muncul setelah ada transaksi pengeluaran.</p>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel analysis-breakdown-panel">
+      <h3>Ringkasan kategori</h3>
+      <div id="categoryBreakdown" class="breakdown"></div>
+    </article>
+  </div>
 </section>
+
+<!-- LAPORAN -->
 <section class="page-section" id="page-reports" hidden>
-<div class="section-heading"><div><small class="eyebrow">REKAP KEUANGAN</small><h1>Laporan</h1><p>Rekap transaksi berdasarkan periode yang dipilih.</p></div><div class="report-actions">
-  <button class="secondary" id="exportPdf">↓ Ekspor PDF</button>
-  <button class="primary" id="exportCsv">↓ Ekspor CSV</button>
-</div>
-<article class="panel"><div class="toolbar"><label>Dari <input type="date" id="reportFrom"></label><label>Sampai <input type="date" id="reportTo"></label><select id="reportType"><option value="all">Semua jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select><button class="secondary" id="resetReport">Reset</button></div><div class="report-totals"><div><small>Pemasukan</small><strong id="reportIncome">Rp 0</strong></div><div><small>Pengeluaran</small><strong id="reportExpense">Rp 0</strong></div><div><small>Selisih</small><strong id="reportNet">Rp 0</strong></div></div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Kategori</th><th>Jenis</th><th>Jumlah</th></tr></thead><tbody id="reportRows"></tbody></table></div><div class="empty compact" id="reportEmpty" hidden><b>▤</b><strong>Tidak ada data pada periode ini</strong><p>Coba ubah rentang tanggal atau tambahkan transaksi.</p></div></article>
+  <div class="section-heading report-heading">
+    <div>
+      <small class="eyebrow">REKAP KEUANGAN</small>
+      <h1>Laporan</h1>
+      <p>Rekap transaksi berdasarkan periode yang dipilih.</p>
+    </div>
+
+    <div class="report-actions">
+      <button class="secondary" id="exportPdf">↓ Ekspor PDF</button>
+      <button class="primary" id="exportCsv">↓ Ekspor CSV</button>
+    </div>
+  </div>
+
+  <article class="panel report-panel">
+    <div class="toolbar">
+      <label>Dari <input type="date" id="reportFrom"></label>
+      <label>Sampai <input type="date" id="reportTo"></label>
+      <select id="reportType">
+        <option value="all">Semua jenis</option>
+        <option value="income">Pemasukan</option>
+        <option value="expense">Pengeluaran</option>
+      </select>
+      <button class="secondary" id="resetReport">Reset</button>
+    </div>
+
+    <div class="report-totals">
+      <div><small>Pemasukan</small><strong id="reportIncome">Rp 0</strong></div>
+      <div><small>Pengeluaran</small><strong id="reportExpense">Rp 0</strong></div>
+      <div><small>Selisih</small><strong id="reportNet">Rp 0</strong></div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tanggal</th><th>Keterangan</th><th>Kategori</th>
+            <th>Jenis</th><th>Jumlah</th>
+          </tr>
+        </thead>
+        <tbody id="reportRows"></tbody>
+      </table>
+    </div>
+
+    <div class="empty compact" id="reportEmpty" hidden>
+      <b>▤</b>
+      <strong>Tidak ada data pada periode ini</strong>
+      <p>Coba ubah rentang tanggal atau tambahkan transaksi.</p>
+    </div>
+  </article>
 </section>
+
 <div class="modal-backdrop" id="transactionModal" hidden><form class="modal" id="transactionForm"><div class="modal-head"><div><small class="eyebrow">TRANSAKSI BARU</small><h2 id="modalTitle">Tambah transaksi</h2></div><button type="button" class="icon-button" id="closeModal" aria-label="Tutup">×</button></div><label>Jenis transaksi<select id="formType"><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select></label><label>Nominal (Rp)<input id="formAmount" type="number" min="1" step="1" placeholder="Contoh: 50000" required></label><label>Keterangan<input id="formNote" type="text" maxlength="90" placeholder="Contoh: Uang saku" required></label><label>Kategori<select id="formCategory"><option>Makanan</option><option>Transport</option><option>Belanja</option><option>Gaji</option><option>Hiburan</option><option>Pendidikan</option><option>Kesehatan</option><option>Lainnya</option></select></label><label>Tanggal<input id="formDate" type="date" required></label><div class="modal-actions"><button type="button" class="secondary" id="cancelModal">Batal</button><button type="submit" class="primary">Simpan transaksi</button></div></form></div>
 <div class="toast" id="toast" role="status"></div>
 <footer>Duitku　•　Pencatatan Keuangan Pribadi　•　Pratinjau antarmuka</footer>
