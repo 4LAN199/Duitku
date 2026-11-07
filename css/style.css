@@ -49,3 +49,104 @@
     display: inline-block;
   }
 }
+/* Sidebar toggle */
+.sidebar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: 800 16px "Plus Jakarta Sans";
+}
+
+.sidebar-toggle b {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: linear-gradient(140deg,#16a875,#066448);
+  color: white;
+}
+
+.sidebar-toggle i {
+  font-style: normal;
+  font-size: 15px;
+  color: var(--muted);
+  margin-left: 5px;
+}
+
+/* Desktop: sidebar bisa ditutup sepenuhnya */
+@media (min-width: 741px) {
+  #app.sidebar-collapsed .sidebar {
+    width: 0;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    overflow: hidden;
+    border: 0;
+  }
+
+  #app .sidebar {
+    transition: width .3s ease, padding .3s ease;
+  }
+}
+
+/* Mobile: sidebar menjadi panel geser */
+@media (max-width: 740px) {
+  #app .sidebar {
+    display: flex;
+    position: fixed;
+    z-index: 60;
+    inset: 0 auto 0 0;
+    width: min(280px, 85vw);
+    height: 100dvh;
+    transform: translateX(-105%);
+    transition: transform .3s ease;
+    box-shadow: 15px 0 40px #0003;
+  }
+
+  #app.sidebar-open .sidebar {
+    transform: translateX(0);
+  }
+
+  #app.sidebar-open::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: #0008;
+  }
+
+  .sidebar-toggle span {
+    display: inline;
+  }
+}
+@keyframes roomTransition {
+  from {
+    opacity: .35;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+main.room-changing .page-section {
+  animation: roomTransition .3s ease both;
+}
+
+.space-option {
+  transition: background .2s ease, transform .2s ease;
+}
+
+.space-option:active {
+  transform: scale(.97);
+}
+
+.space-option.selected {
+  border-left: 3px solid var(--green);
+}
