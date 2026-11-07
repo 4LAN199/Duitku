@@ -150,3 +150,47 @@ main.room-changing .page-section {
 .space-option.selected {
   border-left: 3px solid var(--green);
 }
+.stats-filters {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.stats-filters input {
+  width: 125px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 10px;
+}
+
+.stats-filters span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.stats-filters button {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--text);
+  font-size: 10px;
+}
+
+@media(max-width: 500px) {
+  .stats-filters {
+    justify-content: flex-start;
+  }
+
+  .stats-filters input {
+    flex: 1;
+    width: 105px;
+  }
+}
