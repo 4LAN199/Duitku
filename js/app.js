@@ -37,7 +37,60 @@ document.addEventListener('click', e => {
   }
 });
 
-  const labels={utama:'Duitku Utama',kedua:'Duitku Kedua'}; let activeSpace='utama', editingId=null, transactions=[];
+  const labels = {
+  utama: 'Duitku Utama',
+  kedua: 'Duitku Kedua'
+};
+
+let activeSpace = 'utama';
+let editingId = null;
+let transactions = [];
+let savingsPlans = [];
+let savingsHistory = [];
+
+const storageKey = () => `duitku-v2-transactions-${activeSpace}`;
+const savingsPlansKey = () => `duitku-v2-savings-plans-${activeSpace}`;
+const savingsHistoryKey = () => `duitku-v2-savings-history-${activeSpace}`;
+
+function loadSavings() {
+  try {
+    savingsPlans = JSON.parse(
+      localStorage.getItem(savingsPlansKey()) || '[]'
+    );
+    savingsHistory = JSON.parse(
+      localStorage.getItem(savingsHistoryKey()) || '[]'
+    );
+
+    if (!Array.isArray(savingsPlans)) savingsPlans = [];
+    if (!Array.isArray(savingsHistory)) savingsHistory = [];
+  } catch {
+    savingsPlans = [];
+    savingsHistory = [];
+  }
+}
+
+function saveSavings() {
+  try {
+    localStorage.setItem(
+      savingsPlansKey(),
+      JSON.stringify(savingsPlans)
+    );
+
+    localStorage.setItem(
+      savingsHistoryKey(),
+      JSON.stringify(savingsHistory)
+    );
+  } catch {
+    toast('Penyimpanan browser penuh atau tidak tersedia.');
+  }
+}
+
+function totalSavings() {
+  return savingsPlans.reduce(
+    (total, plan) => total + Number(plan.balance || 0),
+    0
+  );
+}
   const storageKey=()=>`duitku-v2-transactions-${activeSpace}`;
   function load(){try{transactions=JSON.parse(localStorage.getItem(storageKey())||'[]')}catch{transactions=[]}}
   function save(){try{localStorage.setItem(storageKey(),JSON.stringify(transactions))}catch{toast('Penyimpanan browser penuh atau tidak tersedia.')}}
@@ -57,7 +110,8 @@ document.addEventListener('click', e => {
   } catch {}
 
   load();
-  renderAll();
+loadSavings();
+renderAll();
 
   const main = document.querySelector('main');
   main.classList.remove('room-changing');
@@ -72,8 +126,13 @@ document.addEventListener('click', e => {
 }
   const toggle=$('spaceToggle'),menu=$('spaceMenu');toggle.addEventListener('click',()=>{menu.hidden=!menu.hidden;toggle.setAttribute('aria-expanded',String(!menu.hidden))});document.querySelectorAll('[data-space]').forEach(o=>o.addEventListener('click',()=>{setSpace(o.dataset.space);menu.hidden=true;toggle.setAttribute('aria-expanded','false');toast(`Beralih ke ${labels[activeSpace]}`)}));document.addEventListener('click',e=>{if(!e.target.closest('.space-wrap')){menu.hidden=true;toggle.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
   function go(page) {
-  const valid = ['dashboard', 'transactions', 'statistics', 'reports']
-    .includes(page) ? page : 'dashboard';
+  const valid = [
+  'dashboard',
+  'transactions',
+  'savings',
+  'statistics',
+  'reports'
+].includes(page) ? page : 'dashboard';
 
   const target = $(`page-${valid}`);
 
@@ -93,13 +152,19 @@ document.addEventListener('click', e => {
   const crumb = document.querySelector('header .crumb');
 
   crumb.innerHTML = `Ruang keuangan　/　
-    <strong>${labels[activeSpace]}</strong>　/　
-    ${{dashboard:'Dashboard',transactions:'Transaksi',
-       statistics:'Statistik',reports:'Laporan'}[valid]}`;
+  <strong>${labels[activeSpace]}</strong>　/　
+  ${{
+    dashboard: 'Dashboard',
+    transactions: 'Transaksi',
+    savings: 'Tabungan',
+    statistics: 'Statistik',
+    reports: 'Laporan'
+  }[valid]}`;
 
   history.replaceState(null, '', `#${valid}`);
 
   if (valid === 'statistics') renderStats();
+  if (valid === 'savings') renderSavings();
   if (valid === 'reports') renderReport();
 }
   document.querySelectorAll('[data-nav]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.nav)}));document.querySelectorAll('[data-go]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.go)}));
@@ -109,10 +174,13 @@ document.addEventListener('click', e => {
   renderTransactions();
   renderStats();
   renderReport();
+  renderSavings();
 }
   function renderDashboard(){
   const s=sums(transactions);
-  $('dashBalance').textContent=money(s.income-s.expense);
+  $('dashBalance').textContent = money(
+  s.income - s.expense - totalSavings()
+);
   $('dashIncome').textContent=money(s.income);
   $('dashExpense').textContent=money(s.expense);
   $('dashIncomeCount').textContent=`${transactions.filter(t=>t.type==='income').length} transaksi`;
