@@ -117,7 +117,13 @@
 <article class="panel"><div class="toolbar"><input id="transactionSearch" type="search" placeholder="Cari keterangan atau kategori..."><select id="transactionType"><option value="all">Semua jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select></div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Keterangan</th><th>Kategori</th><th>Jenis</th><th>Jumlah</th><th>Aksi</th></tr></thead><tbody id="transactionRows"></tbody></table></div><div class="empty compact" id="transactionEmpty" hidden><b>⇄</b><strong>Belum ada transaksi</strong><p>Transaksi yang kamu tambahkan akan tampil di sini.</p></div></article>
 </section>
 <section class="page-section" id="page-statistics" hidden>
-<div class="section-heading"><div><small class="eyebrow">ANALISIS KEUANGAN</small><h1>Statistik</h1><p>Pahami pola pemasukan dan pengeluaranmu.</p></div><select id="statsPeriod"><option value="all">Semua waktu</option><option value="month">Bulan ini</option></select></div>
+<div class="section-heading"><div><small class="eyebrow">ANALISIS KEUANGAN</small><h1>Statistik</h1><p>Pahami pola pemasukan dan pengeluaranmu.</p></div>
+<div class="stats-filters">
+  <input type="date" id="statsFrom" aria-label="Tanggal awal">
+  <span>—</span>
+  <input type="date" id="statsTo" aria-label="Tanggal akhir">
+  <button type="button" id="statsReset">Reset</button>
+</div>
 <div class="stats stats-three"><article class="metric"><small>Total pemasukan</small><strong id="statsIncome">Rp 0</strong><p>Akumulasi pemasukan</p></article><article class="metric"><small>Total pengeluaran</small><strong id="statsExpense">Rp 0</strong><p>Akumulasi pengeluaran</p></article><article class="metric"><small>Selisih</small><strong id="statsNet">Rp 0</strong><p>Pemasukan dikurangi pengeluaran</p></article></div>
 <div class="analysis-grid"><article class="panel"><h3>Pengeluaran berdasarkan kategori</h3><div id="categoryChart" class="category-chart"><div class="empty compact"><b>◔</b><strong>Belum ada data</strong><p>Grafik muncul setelah ada transaksi pengeluaran.</p></div></div></article><article class="panel"><h3>Ringkasan kategori</h3><div id="categoryBreakdown" class="breakdown"></div></article></div>
 </section>
