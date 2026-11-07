@@ -86,8 +86,6 @@
   </div>
 </header>
 
-<section class="welcome enter"><div><small class="eyebrow">RINGKASAN KEUANGAN</small><h1>Selamat datang di <span id="welcomeSpaceName">Duitku Utama</span>.</h1><p id="welcomeDescription">Pantau dan kelola keuanganmu dengan lebih mudah.</p></div><div class="date" id="today">Hari ini</div></section>
-
 <!-- DASHBOARD -->
 <section class="page-section" id="page-dashboard">
 
@@ -175,11 +173,17 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr>
-            <th>Tanggal</th><th>Keterangan</th><th>Kategori</th>
-            <th>Jenis</th><th>Jumlah</th><th>Aksi</th>
-          </tr>
-        </thead>
+  <tr>
+    <th>Tanggal</th>
+    <th>Jam</th>
+    <th>Keterangan</th>
+    <th>Kategori</th>
+    <th>Jenis</th>
+    <th>Jumlah</th>
+    <th>Dicatat oleh</th>
+    <th>Aksi</th>
+  </tr>
+</thead>
         <tbody id="transactionRows"></tbody>
       </table>
     </div>
@@ -280,11 +284,16 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr>
-            <th>Tanggal</th><th>Keterangan</th><th>Kategori</th>
-            <th>Jenis</th><th>Jumlah</th>
-          </tr>
-        </thead>
+  <tr>
+    <th>Tanggal</th>
+    <th>Jam</th>
+    <th>Keterangan</th>
+    <th>Kategori</th>
+    <th>Jenis</th>
+    <th>Jumlah</th>
+    <th>Dicatat oleh</th>
+  </tr>
+</thead>
         <tbody id="reportRows"></tbody>
       </table>
     </div>
@@ -301,5 +310,8 @@
 <div class="toast" id="toast" role="status"></div>
 <footer>Duitku　•　Pencatatan Keuangan Pribadi　•　Pratinjau antarmuka</footer>
 </main></div>
-<script src="js/auth.js"></script><script src="js/theme.js"></script><script src="js/animation.js"></script><script src="js/app.js"></script>
+<script src="js/auth.js"></script><script src="js/theme.js"></script><script src="js/animation.js">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
+</script><script src="js/app.js"></script>
 </body></html>
