@@ -599,3 +599,92 @@ main.room-changing .page-section {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+/* =================================
+   DUITKU - TABUNGAN
+================================= */
+
+.savings-panel,
+.savings-history-panel {
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.savings-plans {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.savings-card {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 15px;
+  padding: 20px;
+  background: var(--panel, #fff);
+  min-width: 0;
+}
+
+.savings-card h3 {
+  margin: 0 0 7px;
+  font-size: 16px;
+}
+
+.savings-card p {
+  color: var(--muted, #777);
+  font-size: 13px;
+  margin: 5px 0;
+}
+
+.savings-card .savings-amount {
+  display: block;
+  font-size: 21px;
+  font-weight: 800;
+  margin: 18px 0 5px;
+  overflow-wrap: anywhere;
+}
+
+.savings-progress {
+  height: 8px;
+  background: var(--border, #e5e7eb);
+  border-radius: 20px;
+  overflow: hidden;
+  margin: 13px 0;
+}
+
+.savings-progress i {
+  display: block;
+  height: 100%;
+  background: var(--primary, #087f5b);
+  border-radius: inherit;
+}
+
+.savings-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.savings-card-actions button {
+  flex: 1;
+  min-width: 90px;
+}
+
+.savings-history-panel table {
+  min-width: 700px;
+}
+
+.savings-history-panel .table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 740px) {
+  .savings-plans {
+    grid-template-columns: 1fr;
+  }
+
+  .savings-card {
+    padding: 16px;
+  }
+}
