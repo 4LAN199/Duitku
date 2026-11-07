@@ -1,13 +1,64 @@
 document.addEventListener("DOMContentLoaded",()=>{
   DuitkuTheme.init(); DuitkuAnimation.start();
-  const $=id=>document.getElementById(id), money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n||0), today=()=>new Date().toISOString().slice(0,10);
+  const $=id=>document.getElementById(id), const app = $('app');
+const sidebarToggle = $('sidebarToggle');
+
+sidebarToggle.addEventListener('click', () => {
+  const mobile = window.matchMedia('(max-width: 740px)').matches;
+  const className = mobile ? 'sidebar-open' : 'sidebar-collapsed';
+
+  app.classList.toggle(className);
+
+  sidebarToggle.setAttribute(
+    'aria-expanded',
+    String(app.classList.contains(className) ? !mobile : mobile)
+  );
+});
+
+document.addEventListener('click', e => {
+  if (
+    window.matchMedia('(max-width: 740px)').matches &&
+    app.classList.contains('sidebar-open') &&
+    !e.target.closest('.sidebar') &&
+    !e.target.closest('#sidebarToggle')
+  ) {
+    app.classList.remove('sidebar-open');
+  }
+});, money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n||0), today=()=>new Date().toISOString().slice(0,10);
   $('today').textContent=new Intl.DateTimeFormat('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date());
   const labels={utama:'Duitku Utama',kedua:'Duitku Kedua'}; let activeSpace='utama', editingId=null, transactions=[];
   const storageKey=()=>`duitku-v2-transactions-${activeSpace}`;
   function load(){try{transactions=JSON.parse(localStorage.getItem(storageKey())||'[]')}catch{transactions=[]}}
   function save(){try{localStorage.setItem(storageKey(),JSON.stringify(transactions))}catch{toast('Penyimpanan browser penuh atau tidak tersedia.')}}
   function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2600)}
-  function setSpace(id){activeSpace=id in labels?id:'utama';$('activeSpaceName').textContent=labels[activeSpace];$('crumbSpaceName').textContent=labels[activeSpace];$('welcomeSpaceName').textContent=labels[activeSpace];$('welcomeDescription').textContent=activeSpace==='kedua'?'Kelola catatan keuangan di ruang keduamu.':'Pantau dan kelola keuanganmu dengan lebih mudah.';document.querySelectorAll('[data-space]').forEach(o=>o.classList.toggle('selected',o.dataset.space===activeSpace));try{localStorage.setItem('duitku-active-space-preview',activeSpace)}catch{}load();renderAll()}
+  function setSpace(id) {
+  activeSpace = id in labels ? id : 'utama';
+
+  $('activeSpaceName').textContent = labels[activeSpace];
+  $('crumbSpaceName').textContent = labels[activeSpace];
+
+  document.querySelectorAll('[data-space]').forEach(o => {
+    o.classList.toggle('selected', o.dataset.space === activeSpace);
+  });
+
+  try {
+    localStorage.setItem('duitku-active-space-preview', activeSpace);
+  } catch {}
+
+  load();
+  renderAll();
+
+  const main = document.querySelector('main');
+  main.classList.remove('room-changing');
+
+  void main.offsetWidth;
+
+  main.classList.add('room-changing');
+
+  setTimeout(() => {
+    main.classList.remove('room-changing');
+  }, 350);
+}
   const toggle=$('spaceToggle'),menu=$('spaceMenu');toggle.addEventListener('click',()=>{menu.hidden=!menu.hidden;toggle.setAttribute('aria-expanded',String(!menu.hidden))});document.querySelectorAll('[data-space]').forEach(o=>o.addEventListener('click',()=>{setSpace(o.dataset.space);menu.hidden=true;toggle.setAttribute('aria-expanded','false');toast(`Beralih ke ${labels[activeSpace]}`)}));document.addEventListener('click',e=>{if(!e.target.closest('.space-wrap')){menu.hidden=true;toggle.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
   function go(page){const valid=['dashboard','transactions','statistics','reports'].includes(page)?page:'dashboard';document.querySelectorAll('.page-section').forEach(el=>el.hidden=el.id!==`page-${valid}`);document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===valid));const crumb=document.querySelector('header .crumb');crumb.innerHTML=`Ruang keuangan　/　<strong>${labels[activeSpace]}</strong>　/　${({dashboard:'Dashboard',transactions:'Transaksi',statistics:'Statistik',reports:'Laporan'})[valid]}`;history.replaceState(null,'',`#${valid}`);if(valid==='statistics')renderStats();if(valid==='reports')renderReport()}
   document.querySelectorAll('[data-nav]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.nav)}));document.querySelectorAll('[data-go]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.go)}));
