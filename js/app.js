@@ -25,7 +25,6 @@ document.addEventListener('click', e => {
     app.classList.remove('sidebar-open');
   }
 });, money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n||0), today=()=>new Date().toISOString().slice(0,10);
-  $('today').textContent=new Intl.DateTimeFormat('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date());
   const labels={utama:'Duitku Utama',kedua:'Duitku Kedua'}; let activeSpace='utama', editingId=null, transactions=[];
   const storageKey=()=>`duitku-v2-transactions-${activeSpace}`;
   function load(){try{transactions=JSON.parse(localStorage.getItem(storageKey())||'[]')}catch{transactions=[]}}
