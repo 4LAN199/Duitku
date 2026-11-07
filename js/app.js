@@ -159,3 +159,13 @@ $('statsReset').addEventListener('click', () => {
   $('exportCsv').addEventListener('click',()=>{const list=reportList();if(!list.length){toast('Tidak ada transaksi untuk diekspor.');return}const rows=[['Tanggal','Keterangan','Kategori','Jenis','Jumlah'],...list.map(t=>[t.date,t.note,t.category,t.type==='income'?'Pemasukan':'Pengeluaran',t.amount])];const csv='\uFEFF'+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`laporan-${activeSpace}-${today()}.csv`;a.click();URL.revokeObjectURL(url);toast('Laporan CSV berhasil dibuat.')});
   let saved='utama';try{saved=localStorage.getItem('duitku-active-space-preview')||'utama'}catch{}setSpace(saved);go(location.hash.slice(1)||'dashboard');
 });
+$('exportPdf').addEventListener('click', () => {
+  const list = reportList();
+
+  if (!list.length) {
+    toast('Tidak ada transaksi untuk diekspor.');
+    return;
+  }
+
+  window.print();
+});
