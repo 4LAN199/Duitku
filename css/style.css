@@ -194,3 +194,62 @@ main.room-changing .page-section {
     width: 105px;
   }
 }
+.report-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #page-reports,
+  #page-reports * {
+    visibility: visible;
+  }
+
+  #page-reports {
+    display: block !important;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    padding: 20px;
+    color: black !important;
+    background: white !important;
+  }
+
+  #page-reports .panel {
+    border: 0;
+    box-shadow: none;
+    background: white;
+  }
+
+  #page-reports .report-actions,
+  #page-reports .toolbar,
+  #page-reports .section-heading button,
+  #page-reports #reportEmpty {
+    display: none !important;
+  }
+
+  #page-reports table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  #page-reports th,
+  #page-reports td {
+    color: black !important;
+    border: 1px solid #ccc;
+  }
+
+  #page-reports th {
+    background: #eee !important;
+  }
+}
