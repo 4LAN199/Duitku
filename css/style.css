@@ -253,3 +253,327 @@ main.room-changing .page-section {
     background: #eee !important;
   }
 }
+
+/* =================================
+   DUITKU - PENATAAN ULANG HALAMAN
+================================= */
+
+/* Gunakan ruang layar secara maksimal */
+.app > main {
+  flex: 1;
+  width: auto;
+  max-width: none;
+  min-width: 0;
+  margin: 0;
+  padding: 0 clamp(20px, 3vw, 48px) 30px;
+}
+
+/* Header setiap halaman */
+.page-section {
+  width: 100%;
+  min-width: 0;
+}
+
+.section-heading {
+  width: 100%;
+  padding-top: 27px;
+  padding-bottom: 22px;
+}
+
+.section-heading h1 {
+  font-size: clamp(24px, 2.4vw, 30px);
+}
+
+.welcome {
+  padding-top: 32px;
+  padding-bottom: 26px;
+}
+
+/* Dashboard */
+#page-dashboard .stats {
+  width: 100%;
+}
+
+#page-dashboard .columns {
+  width: 100%;
+}
+
+/* Statistik */
+.statistics-heading {
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.stats-three {
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.stats-three .metric {
+  min-width: 0;
+}
+
+.stats-three .metric strong {
+  font-size: clamp(17px, 1.8vw, 23px);
+  overflow-wrap: anywhere;
+}
+
+/* Grafik statistik lebih besar */
+.analysis-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr);
+  gap: 18px;
+  align-items: stretch;
+  width: 100%;
+  margin-top: 0;
+}
+
+.analysis-grid .panel {
+  min-width: 0;
+  min-height: 380px;
+  padding: 25px;
+}
+
+.analysis-grid h3 {
+  font-size: 16px;
+  margin-bottom: 24px;
+}
+
+.category-chart {
+  min-height: 290px;
+  gap: 35px;
+  justify-content: space-evenly;
+}
+
+.donut {
+  width: 235px;
+  height: 235px;
+}
+
+.donut > div {
+  width: 145px;
+  height: 145px;
+}
+
+.donut b {
+  font-size: 16px;
+}
+
+.donut small {
+  font-size: 11px;
+}
+
+.chart-legend {
+  min-width: 155px;
+  gap: 14px;
+}
+
+.chart-legend div {
+  font-size: 12px;
+}
+
+.chart-legend b {
+  font-size: 12px;
+}
+
+.breakdown {
+  gap: 23px;
+}
+
+.break-row > div:first-child {
+  font-size: 12px;
+}
+
+.break-row b {
+  font-size: 12px;
+}
+
+.progress {
+  height: 9px;
+}
+
+/* Laporan */
+.report-heading {
+  align-items: center;
+}
+
+.report-panel {
+  width: 100%;
+  min-height: 400px;
+}
+
+.report-panel .table-wrap {
+  width: 100%;
+}
+
+.report-panel table {
+  width: 100%;
+}
+
+.report-totals {
+  width: 100%;
+}
+
+.report-actions {
+  flex-shrink: 0;
+}
+
+/* Transaksi dan laporan menggunakan ruang horizontal penuh */
+.transaction-panel,
+.report-panel {
+  width: 100%;
+}
+
+.transaction-panel .table-wrap,
+.report-panel .table-wrap {
+  overflow-x: auto;
+}
+
+/* Tampilan tablet */
+@media (max-width: 1000px) {
+  .app > main {
+    padding-left: 22px;
+    padding-right: 22px;
+  }
+
+  .analysis-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .analysis-grid .panel {
+    padding: 18px;
+  }
+
+  .donut {
+    width: 190px;
+    height: 190px;
+  }
+
+  .donut > div {
+    width: 115px;
+    height: 115px;
+  }
+}
+
+/* Tampilan HP */
+@media (max-width: 740px) {
+  .app > main {
+    padding: 0 15px 25px;
+  }
+
+  .section-heading {
+    padding-top: 24px;
+    padding-bottom: 18px;
+  }
+
+  .statistics-heading,
+  .report-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .stats-filters {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .stats-three {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .stats-three .metric:last-child {
+    grid-column: auto;
+  }
+
+  /* Grafik tampil di bagian atas dan ringkasan di bawah */
+  .analysis-grid {
+    grid-template-columns: 1fr;
+    gap: 13px;
+  }
+
+  .analysis-grid .panel {
+    min-height: auto;
+    padding: 20px;
+  }
+
+  .analysis-chart-panel {
+    order: 1;
+  }
+
+  .analysis-breakdown-panel {
+    order: 2;
+  }
+
+  .category-chart {
+    min-height: 260px;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .donut {
+    width: 210px;
+    height: 210px;
+  }
+
+  .donut > div {
+    width: 128px;
+    height: 128px;
+  }
+
+  .chart-legend {
+    width: 100%;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .breakdown {
+    gap: 18px;
+  }
+
+  .report-actions {
+    width: 100%;
+  }
+
+  .report-actions button {
+    flex: 1;
+  }
+
+  .report-totals {
+    grid-template-columns: 1fr;
+  }
+
+  .report-panel {
+    padding: 15px;
+  }
+
+  .report-panel .toolbar {
+    align-items: stretch;
+  }
+
+  .report-panel .toolbar label {
+    flex: 1;
+    min-width: 125px;
+  }
+
+  .report-panel .toolbar input,
+  .report-panel .toolbar select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .transaction-panel {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 390px) {
+  .app > main {
+    padding-left: 11px;
+    padding-right: 11px;
+  }
+
+  .chart-legend {
+    grid-template-columns: 1fr;
+  }
+}
