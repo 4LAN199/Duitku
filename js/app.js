@@ -1,6 +1,16 @@
 document.addEventListener("DOMContentLoaded",()=>{
   DuitkuTheme.init(); DuitkuAnimation.start();
-  const $=id=>document.getElementById(id), const app = $('app');
+  
+const $ = id => document.getElementById(id);
+const money = n => new Intl.NumberFormat('id-ID', {
+  style: 'currency',
+  currency: 'IDR',
+  maximumFractionDigits: 0
+}).format(n || 0);
+const today = () => new Date().toISOString().slice(0, 10);
+
+// Sidebar toggle
+const app = $('app');
 const sidebarToggle = $('sidebarToggle');
 
 sidebarToggle.addEventListener('click', () => {
@@ -11,7 +21,7 @@ sidebarToggle.addEventListener('click', () => {
 
   sidebarToggle.setAttribute(
     'aria-expanded',
-    String(app.classList.contains(className) ? !mobile : mobile)
+    String(app.classList.contains(className))
   );
 });
 
@@ -23,8 +33,10 @@ document.addEventListener('click', e => {
     !e.target.closest('#sidebarToggle')
   ) {
     app.classList.remove('sidebar-open');
+    sidebarToggle.setAttribute('aria-expanded', 'false');
   }
-});, money=n=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(n||0), today=()=>new Date().toISOString().slice(0,10);
+});
+
   const labels={utama:'Duitku Utama',kedua:'Duitku Kedua'}; let activeSpace='utama', editingId=null, transactions=[];
   const storageKey=()=>`duitku-v2-transactions-${activeSpace}`;
   function load(){try{transactions=JSON.parse(localStorage.getItem(storageKey())||'[]')}catch{transactions=[]}}
@@ -62,7 +74,12 @@ document.addEventListener('click', e => {
   function go(page){const valid=['dashboard','transactions','statistics','reports'].includes(page)?page:'dashboard';document.querySelectorAll('.page-section').forEach(el=>el.hidden=el.id!==`page-${valid}`);document.querySelectorAll('[data-nav]').forEach(a=>a.classList.toggle('active',a.dataset.nav===valid));const crumb=document.querySelector('header .crumb');crumb.innerHTML=`Ruang keuangan　/　<strong>${labels[activeSpace]}</strong>　/　${({dashboard:'Dashboard',transactions:'Transaksi',statistics:'Statistik',reports:'Laporan'})[valid]}`;history.replaceState(null,'',`#${valid}`);if(valid==='statistics')renderStats();if(valid==='reports')renderReport()}
   document.querySelectorAll('[data-nav]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.nav)}));document.querySelectorAll('[data-go]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.go)}));
   function sums(list){return list.reduce((o,t)=>(o[t.type]+=Number(t.amount),o),{income:0,expense:0})}
-  function renderAll(){renderDashboard();renderTransactions();();renderReport()}
+  function renderAll() {
+  renderDashboard();
+  renderTransactions();
+  renderStats();
+  renderReport();
+}
   function renderDashboard(){const s=sums(transactions);$('dashBalance').textContent=money(s.income-s.expense);$('dashIncome').textContent=money(s.income);$('dashExpense').textContent=money(s.expense);$('dashIncomeCount').textContent=`${transactions.filter(t=>t.type==='income').length} transaksi`; $('dashExpenseCount').textContent=`${transactions.filter(t=>t.type==='expense').length} transaksi`;const list=[...transactions].sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||'')).slice(0,5);$('recentTransactions').innerHTML=list.map(t=>rowHTML(t,false)).join('');$('recentEmpty').hidden=list.length>0}
   function rowHTML(t,actions=true){return `<div class="transaction-item"><span class="tx-icon ${t.type}">${t.type==='income'?'↙':'↗'}</span><span class="tx-info"><b>${esc(t.note)}</b><small>${esc(t.category)} · ${formatDate(t.date)}</small></span><strong class="amount ${t.type}">${t.type==='income'?'+':'−'} ${money(t.amount)}</strong>${actions?`<span class="tx-actions"><button data-edit="${t.id}" title="Edit">✎</button><button data-delete="${t.id}" title="Hapus">×</button></span>`:''}</div>`}
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function formatDate(d){return d?new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(d+'T00:00:00')):'-'}
@@ -156,9 +173,7 @@ $('statsReset').addEventListener('click', () => {
   renderStats();
 });['reportFrom','reportTo','reportType'].forEach(id=>$(id).addEventListener('change',renderReport));$('resetReport').addEventListener('click',()=>{$('reportFrom').value='';$('reportTo').value='';$('reportType').value='all';renderReport()});
   $('exportCsv').addEventListener('click',()=>{const list=reportList();if(!list.length){toast('Tidak ada transaksi untuk diekspor.');return}const rows=[['Tanggal','Keterangan','Kategori','Jenis','Jumlah'],...list.map(t=>[t.date,t.note,t.category,t.type==='income'?'Pemasukan':'Pengeluaran',t.amount])];const csv='\uFEFF'+rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(';')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`laporan-${activeSpace}-${today()}.csv`;a.click();URL.revokeObjectURL(url);toast('Laporan CSV berhasil dibuat.')});
-  let saved='utama';try{saved=localStorage.getItem('duitku-active-space-preview')||'utama'}catch{}setSpace(saved);go(location.hash.slice(1)||'dashboard');
-});
-$('exportPdf').addEventListener('click', () => {
+  $('exportPdf').addEventListener('click', () => {
   const list = reportList();
 
   if (!list.length) {
@@ -167,4 +182,14 @@ $('exportPdf').addEventListener('click', () => {
   }
 
   window.print();
+});
+  llet saved = 'utama';
+
+try {
+  saved = localStorage.getItem('duitku-active-space-preview') || 'utama';
+} catch {}
+
+setSpace(saved);
+go(location.hash.slice(1) || 'dashboard');
+
 });
