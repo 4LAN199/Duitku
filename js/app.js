@@ -183,7 +183,7 @@ $('statsReset').addEventListener('click', () => {
 
   window.print();
 });
-  llet saved = 'utama';
+  let saved = 'utama';
 
 try {
   saved = localStorage.getItem('duitku-active-space-preview') || 'utama';
