@@ -1,152 +1,313 @@
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut,
+  updateProfile
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
 (() => {
   const $ = id => document.getElementById(id);
-  const USERS_KEY = "duitku-v2-preview-users";
-  const SESSION_KEY = "duitku-v2-preview-session";
-  const readUsers = () => { try { return JSON.parse(localStorage.getItem(USERS_KEY) || "[]"); } catch { return []; } };
-  const writeUsers = users => localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  const digest = async value => {
-    if (!crypto?.subtle) throw new Error("Browser tidak mendukung penyimpanan sandi demo. Buka melalui Chrome atau Live Server.");
-    const bytes = new TextEncoder().encode(value);
-    const hash = await crypto.subtle.digest("SHA-256", bytes);
-    return [...new Uint8Array(hash)].map(x => x.toString(16).padStart(2,"0")).join("");
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCHVCxO6gwtmwK8WUHfS4Om_KecEQvGgWM",
+    authDomain: "alan-agb.firebaseapp.com",
+    projectId: "alan-agb",
+    storageBucket: "alan-agb.firebasestorage.app",
+    messagingSenderId: "298678037243",
+    appId: "1:298678037243:web:fbd42f9f517189d9889e5e",
+    measurementId: "G-SCWBF8P3S4"
   };
-  const initials = name => name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase() || "DU";
-  function message(text, error=false){ $("authMessage").textContent=text; $("authMessage").classList.toggle("error",error); }
-  function tab(which){
-    const login=which==="login";
-    $("loginForm").hidden=!login; $("registerForm").hidden=login;
-    $("loginTab").classList.toggle("active",login); $("registerTab").classList.toggle("active",!login);
-    $("authHeading").textContent=login?"Masuk ke Duitku":"Buat akun Duitku";
-    $("authSubtitle").textContent=login?"Kelola keuanganmu dengan lebih teratur.":"Daftar untuk mulai mencatat keuangan.";
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  const DEVELOPER_EMAIL = "iqbalmaulanaal123@gmail.com";
+
+  const initials = name =>
+    String(name || "Duitku")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map(x => x[0])
+      .join("")
+      .toUpperCase() || "DU";
+
+  function message(text, error = false) {
+    $("authMessage").textContent = text;
+    $("authMessage").classList.toggle("error", error);
+  }
+
+  function tab(which) {
+    const login = which === "login";
+
+    $("loginForm").hidden = !login;
+    $("registerForm").hidden = login;
+    $("loginTab").classList.toggle("active", login);
+    $("registerTab").classList.toggle("active", !login);
+
+    $("authHeading").textContent = login
+      ? "Masuk ke Duitku"
+      : "Buat akun Duitku";
+
+    $("authSubtitle").textContent = login
+      ? "Kelola keuanganmu dengan lebih teratur."
+      : "Daftar untuk mulai mencatat keuangan.";
+
     message("");
   }
- function showWelcome() {
-  const modal = $("welcomeModal");
-  if (!modal) return;
 
-  // Jangan tampilkan lagi selama sesi login yang sama.
-  if (sessionStorage.getItem("duitku-welcome-shown") === "yes") {
-    return;
+  function showWelcome() {
+    const modal = $("welcomeModal");
+    if (!modal) return;
+
+    if (sessionStorage.getItem("duitku-welcome-shown") === "yes") {
+      return;
+    }
+
+    sessionStorage.setItem("duitku-welcome-shown", "yes");
+    modal.hidden = false;
   }
 
-  sessionStorage.setItem("duitku-welcome-shown", "yes");
-  modal.hidden = false;
-}
-
-function closeWelcome() {
-  const modal = $("welcomeModal");
-  if (modal) modal.hidden = true;
-}
-
-function showApp(user) {
-  $("authScreen").hidden = true;
-  $("app").style.display = "flex";
-
-  $("profileName").textContent = user.name;
-  $("profileEmail").textContent = user.email;
-  $("profileInitials").textContent = initials(user.name);
-
-  document.querySelector(".preview").textContent = "● Pratinjau desain";
-
-  try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ email: user.email }));
-  } catch {}
-
-  window.dispatchEvent(
-    new CustomEvent("duitku:authenticated", { detail: user })
-  );
-
-  showWelcome();
-}
-  function showLogin(){
-    $("app").style.display="none"; $("authScreen").hidden=false; tab("login");
-    try { localStorage.removeItem(SESSION_KEY); } catch {}
+  function closeWelcome() {
+    const modal = $("welcomeModal");
+    if (modal) modal.hidden = true;
   }
-  document.addEventListener("DOMContentLoaded",()=>{
-    $("loginTab").addEventListener("click",()=>tab("login"));
-    $("registerTab").addEventListener("click",()=>tab("register"));
-    document.querySelectorAll("[data-toggle-password]").forEach(btn=>btn.addEventListener("click",()=>{
-      const input=$(btn.dataset.togglePassword); input.type=input.type==="password"?"text":"password"; btn.textContent=input.type==="password"?"Lihat":"Tutup";
-    }));
-    $("registerForm").addEventListener("submit",async e=>{
-      e.preventDefault(); message("Memproses pendaftaran...");
-      const name=$("registerName").value.trim(), email=$("registerEmail").value.trim().toLowerCase();
-      const password=$("registerPassword").value, confirm=$("registerConfirm").value;
-      if(password.length<8){message("Kata sandi minimal 8 karakter.",true);return;}
-      if(password!==confirm){message("Konfirmasi kata sandi tidak cocok.",true);return;}
-      try{
-        const users=readUsers();
-        if(users.some(u=>u.email===email)){message("Email sudah terdaftar di pratinjau ini. Silakan masuk.",true);return;}
-        const user={name,email,passwordHash:await digest(password),createdAt:new Date().toISOString()};
-        users.push(user); writeUsers(users); showApp(user);
-      }catch(err){message(err.message||"Pendaftaran gagal.",true);}
+
+  function showApp(user) {
+    $("authScreen").hidden = true;
+    $("app").style.display = "flex";
+
+    $("profileName").textContent = user.name;
+    $("profileEmail").textContent = user.email;
+    $("profileInitials").textContent = initials(user.name);
+
+    const preview = document.querySelector(".preview");
+    if (preview) preview.textContent = "● Terhubung ke Firebase";
+
+    window.dispatchEvent(
+      new CustomEvent("duitku:authenticated", { detail: user })
+    );
+
+    showWelcome();
+  }
+
+  function showLogin() {
+    $("app").style.display = "none";
+    $("authScreen").hidden = false;
+    tab("login");
+  }
+
+  function friendlyError(error) {
+    const messages = {
+      "auth/invalid-credential": "Email atau kata sandi salah.",
+      "auth/user-not-found": "Akun tidak ditemukan.",
+      "auth/wrong-password": "Kata sandi salah.",
+      "auth/email-already-in-use": "Email sudah terdaftar. Silakan masuk.",
+      "auth/weak-password": "Kata sandi terlalu lemah. Gunakan minimal 8 karakter.",
+      "auth/invalid-email": "Format email tidak valid.",
+      "auth/too-many-requests": "Terlalu banyak percobaan. Coba lagi nanti.",
+      "auth/network-request-failed": "Koneksi internet bermasalah.",
+      "permission-denied": "Akses profil ditolak oleh aturan Firestore."
+    };
+
+    return messages[error.code] ||
+      error.message ||
+      "Terjadi kesalahan. Silakan coba lagi.";
+  }
+
+  async function loadUserProfile(firebaseUser) {
+    const email = firebaseUser.email.toLowerCase();
+    const profileRef = doc(db, "users", email);
+    const profileSnap = await getDoc(profileRef);
+
+    if (!profileSnap.exists()) {
+      throw new Error(
+        "Profil akun belum ditemukan di Firestore. Hubungi pengelola Duitku."
+      );
+    }
+
+    const profile = profileSnap.data();
+
+    // Email Developer ditetapkan dari konfigurasi aplikasi.
+    // Role Firestore belum diubah pada tahap ini.
+    const role = email === DEVELOPER_EMAIL
+      ? "developer"
+      : (profile.role || "viewer");
+
+    return {
+      uid: firebaseUser.uid,
+      name: profile.name || firebaseUser.displayName || email,
+      email,
+      role,
+      status: profile.status || "active"
+    };
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    $("loginTab").addEventListener("click", () => tab("login"));
+    $("registerTab").addEventListener("click", () => tab("register"));
+
+    document.querySelectorAll("[data-toggle-password]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const input = $(btn.dataset.togglePassword);
+        input.type = input.type === "password" ? "text" : "password";
+        btn.textContent = input.type === "password" ? "Lihat" : "Tutup";
+      });
     });
-    $("loginForm").addEventListener("submit",async e=>{
-      e.preventDefault(); message("Memeriksa akun...");
-      const email=$("loginEmail").value.trim().toLowerCase(), password=$("loginPassword").value;
-      try{
-        const hash=await digest(password), user=readUsers().find(u=>u.email===email&&u.passwordHash===hash);
-        if(!user){message("Email atau kata sandi salah, atau akun belum dibuat di browser ini.",true);return;}
-        showApp(user);
-      }catch(err){message(err.message||"Gagal masuk.",true);}
+
+    $("registerForm").addEventListener("submit", async e => {
+      e.preventDefault();
+
+      const name = $("registerName").value.trim();
+      const email = $("registerEmail").value.trim().toLowerCase();
+      const password = $("registerPassword").value;
+      const confirm = $("registerConfirm").value;
+
+      if (password.length < 8) {
+        message("Kata sandi minimal 8 karakter.", true);
+        return;
+      }
+
+      if (password !== confirm) {
+        message("Konfirmasi kata sandi tidak cocok.", true);
+        return;
+      }
+
+      try {
+        message("Membuat akun Firebase...");
+
+        const credential = await createUserWithEmailAndPassword(
+          auth,
+          email,
+          password
+        );
+
+        await updateProfile(credential.user, {
+          displayName: name
+        });
+
+        const profileRef = doc(db, "users", email);
+        const profileSnap = await getDoc(profileRef);
+
+        // Jangan menimpa profil lama jika dokumen sudah tersedia.
+        if (!profileSnap.exists()) {
+          await setDoc(profileRef, {
+            name,
+            email,
+            role: "viewer",
+            status: "active",
+            emailVerified: credential.user.emailVerified,
+            createdAt: serverTimestamp()
+          });
+        }
+
+        message("Akun berhasil dibuat.");
+      } catch (error) {
+        message(friendlyError(error), true);
+      }
     });
-    $("forgotPassword").addEventListener("click",()=>message("Fitur reset kata sandi akan tersedia setelah Firebase Auth dihubungkan."));
-    // Tombol dan interaksi pop-up Welcome
-$("closeWelcome").addEventListener("click", closeWelcome);
-$("startUsingDuitku").addEventListener("click", closeWelcome);
 
-$("welcomeModal").addEventListener("click", e => {
-  if (e.target === $("welcomeModal")) {
-    closeWelcome();
-  }
-});
+    $("loginForm").addEventListener("submit", async e => {
+      e.preventDefault();
 
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && !$("welcomeModal").hidden) {
-    closeWelcome();
-  }
-});
+      const email = $("loginEmail").value.trim().toLowerCase();
+      const password = $("loginPassword").value;
+
+      try {
+        message("Memeriksa akun Firebase...");
+
+        await signInWithEmailAndPassword(auth, email, password);
+        message("Login berhasil.");
+      } catch (error) {
+        message(friendlyError(error), true);
+      }
+    });
+
+    $("forgotPassword").addEventListener("click", () => {
+      message("Fitur reset kata sandi Firebase akan kita aktifkan pada tahap berikutnya.");
+    });
+
+    $("closeWelcome").addEventListener("click", closeWelcome);
+    $("startUsingDuitku").addEventListener("click", closeWelcome);
+
+    $("welcomeModal").addEventListener("click", e => {
+      if (e.target === $("welcomeModal")) closeWelcome();
+    });
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && !$("welcomeModal").hidden) {
+        closeWelcome();
+      }
+    });
+
     function requestLogout() {
-  $("logoutConfirmModal").hidden = false;
-}
+      $("logoutConfirmModal").hidden = false;
+    }
 
-function closeLogoutConfirm() {
-  $("logoutConfirmModal").hidden = true;
-}
+    function closeLogoutConfirm() {
+      $("logoutConfirmModal").hidden = true;
+    }
 
-function logout() {
-  closeLogoutConfirm();
-  closeWelcome();
+    async function logout() {
+      try {
+        await signOut(auth);
+        closeLogoutConfirm();
+        closeWelcome();
+        sessionStorage.removeItem("duitku-welcome-shown");
+        $("loginPassword").value = "";
+        $("registerPassword").value = "";
+        $("registerConfirm").value = "";
+      } catch (error) {
+        alert(friendlyError(error));
+      }
+    }
 
-  // Izinkan Welcome muncul lagi setelah login berikutnya.
-  sessionStorage.removeItem("duitku-welcome-shown");
+    $("logoutButton").addEventListener("click", requestLogout);
+    $("logoutButtonMobile").addEventListener("click", requestLogout);
 
-  showLogin();
+    $("cancelLogout").addEventListener("click", closeLogoutConfirm);
+    $("cancelLogoutTop").addEventListener("click", closeLogoutConfirm);
+    $("confirmLogout").addEventListener("click", logout);
 
-  $("loginPassword").value = "";
-  $("registerPassword").value = "";
-  $("registerConfirm").value = "";
-}
-$("logoutButton").addEventListener("click", requestLogout);
-$("logoutButtonMobile").addEventListener("click", requestLogout);
+    $("logoutConfirmModal").addEventListener("click", e => {
+      if (e.target === $("logoutConfirmModal")) {
+        closeLogoutConfirm();
+      }
+    });
 
-$("cancelLogout").addEventListener("click", closeLogoutConfirm);
-$("cancelLogoutTop").addEventListener("click", closeLogoutConfirm);
-$("confirmLogout").addEventListener("click", logout);
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && !$("logoutConfirmModal").hidden) {
+        closeLogoutConfirm();
+      }
+    });
 
-$("logoutConfirmModal").addEventListener("click", e => {
-  if (e.target === $("logoutConfirmModal")) {
-    closeLogoutConfirm();
-  }
-});
+    onAuthStateChanged(auth, async firebaseUser => {
+      if (!firebaseUser) {
+        showLogin();
+        return;
+      }
 
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && !$("logoutConfirmModal").hidden) {
-    closeLogoutConfirm();
-  }
-});
-    let session=null; try{session=JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch{}
-    const user=session?.email?readUsers().find(u=>u.email===session.email):null;
-    if(user) showApp(user); else showLogin();
+      try {
+        message("Memuat profil akun...");
+        const user = await loadUserProfile(firebaseUser);
+        showApp(user);
+      } catch (error) {
+        await signOut(auth);
+        showLogin();
+        message(friendlyError(error), true);
+      }
+    });
   });
 })();
