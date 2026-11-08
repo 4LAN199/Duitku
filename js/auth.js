@@ -32,7 +32,15 @@ import {
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+window.duitkuGetIdToken = async () => {
+  const currentUser = auth.currentUser;
 
+  if (!currentUser) {
+    throw new Error("Pengguna belum login.");
+  }
+
+  return await currentUser.getIdToken();
+};
   const DEVELOPER_EMAIL = "iqbalmaulanaal123@gmail.com";
   let registering = false;
 
