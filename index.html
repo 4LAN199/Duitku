@@ -208,7 +208,14 @@
       <h1>Tabungan</h1>
       <p>Buat tujuan tabungan dan pantau perkembangannya.</p>
     </div>
-    <button class="primary" id="newSavingsPlan">＋ Buat tabungan</button>
+    <div class="report-actions">
+  <button class="secondary" id="showCompletedSavings" type="button">
+    Rencana Selesai
+  </button>
+  <button class="primary" id="newSavingsPlan" type="button">
+    ＋ Buat tabungan
+  </button>
+</div>
   </div>
 
   <div class="stats stats-three">
@@ -243,7 +250,40 @@
       <p>Buat rencana pertamamu untuk mulai menabung.</p>
     </div>
   </article>
+  <article class="panel savings-history-panel" id="completedSavingsPanel" hidden>
+    <div class="panel-head">
+      <div>
+        <h3>Rencana Selesai</h3>
+        <p>Daftar tabungan yang sudah digunakan untuk memenuhi tujuan.</p>
+      </div>
+      <button class="secondary" id="hideCompletedSavings" type="button">
+        Tutup
+      </button>
+    </div>
 
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nama rencana</th>
+            <th>Target</th>
+            <th>Digunakan</th>
+            <th>Sisa dikembalikan</th>
+            <th>Tanggal selesai</th>
+            <th>Jam</th>
+            <th>Diselesaikan oleh</th>
+          </tr>
+        </thead>
+        <tbody id="completedSavingsRows"></tbody>
+      </table>
+    </div>
+
+    <div class="empty compact" id="completedSavingsEmpty">
+      <b>✓</b>
+      <strong>Belum ada rencana selesai</strong>
+      <p>Rencana yang sudah mencapai target akan muncul di sini setelah diselesaikan.</p>
+    </div>
+  </article>
   <article class="panel savings-history-panel">
     <div class="panel-head">
       <div>
