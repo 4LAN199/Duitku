@@ -85,6 +85,52 @@ function saveSavings() {
   }
 }
 
+let completedSavings = [];
+
+const completedSavingsKey = () =>
+  `duitku-v2-savings-completed-${activeSpace}`;
+
+function loadSavings() {
+  try {
+    savingsPlans = JSON.parse(
+      localStorage.getItem(savingsPlansKey()) || '[]'
+    );
+    savingsHistory = JSON.parse(
+      localStorage.getItem(savingsHistoryKey()) || '[]'
+    );
+    completedSavings = JSON.parse(
+      localStorage.getItem(completedSavingsKey()) || '[]'
+    );
+
+    if (!Array.isArray(savingsPlans)) savingsPlans = [];
+    if (!Array.isArray(savingsHistory)) savingsHistory = [];
+    if (!Array.isArray(completedSavings)) completedSavings = [];
+  } catch {
+    savingsPlans = [];
+    savingsHistory = [];
+    completedSavings = [];
+  }
+}
+
+function saveSavings() {
+  try {
+    localStorage.setItem(
+      savingsPlansKey(),
+      JSON.stringify(savingsPlans)
+    );
+    localStorage.setItem(
+      savingsHistoryKey(),
+      JSON.stringify(savingsHistory)
+    );
+    localStorage.setItem(
+      completedSavingsKey(),
+      JSON.stringify(completedSavings)
+    );
+  } catch {
+    toast('Penyimpanan browser penuh atau tidak tersedia.');
+  }
+}
+
 function totalSavings() {
   return savingsPlans.reduce(
     (total, plan) => total + Number(plan.balance || 0),
@@ -167,6 +213,331 @@ renderAll();
   if (valid === 'reports') renderReport();
 }
   document.querySelectorAll('[data-nav]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.nav)}));document.querySelectorAll('[data-go]').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(a.dataset.go)}));
+  function savingsActor() {
+  return $('profileName').textContent.trim() || 'Pengguna Duitku';
+}
+
+function addSavingsHistory(plan, activity, amount) {
+  savingsHistory.unshift({
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    planName: plan.name,
+    activity,
+    amount: Number(amount),
+    date: today(),
+    createdAt: new Date().toISOString(),
+    createdByName: savingsActor()
+  });
+}
+
+function renderSavings() {
+  const total = totalSavings();
+  const startedCount = savingsPlans.filter(p => p.started).length;
+
+  $('savingsTotal').textContent = money(total);
+  $('savingsPlanCount').textContent = savingsPlans.length;
+  $('savingsActiveCount').textContent = startedCount;
+
+  $('savingsEmpty').hidden = savingsPlans.length > 0;
+
+  $('savingsPlans').innerHTML = savingsPlans.map(plan => {
+    const balance = Number(plan.balance || 0);
+    const target = Number(plan.target || 0);
+    const progress = target > 0
+      ? Math.min(100, balance / target * 100)
+      : 0;
+
+    return `
+      <article class="savings-card">
+        <h3>${esc(plan.name)}</h3>
+        <p>${esc(plan.note || 'Tidak ada keterangan')}</p>
+        <p>Status: <b>${plan.started ? 'Berjalan' : 'Belum dimulai'}</b></p>
+
+        <span class="savings-amount">${money(balance)}</span>
+        <p>Target: ${money(target)}</p>
+
+        <div class="savings-progress">
+          <i style="width:${progress}%"></i>
+        </div>
+        <p>Progress ${progress.toFixed(1)}%</p>
+
+        <div class="savings-card-actions">
+          ${
+            !plan.started
+              ? `<button class="primary" data-savings-action="start" data-id="${plan.id}">Mulai menabung</button>`
+              : `
+                <button class="primary" data-savings-action="deposit" data-id="${plan.id}">Setor</button>
+                <button class="secondary" data-savings-action="withdraw" data-id="${plan.id}">Tarik</button>
+              `
+          }
+          <button class="secondary" data-savings-action="edit" data-id="${plan.id}">Edit</button>
+          <button class="secondary" data-savings-action="delete" data-id="${plan.id}">Hapus</button>
+          ${
+            plan.started && target > 0 && balance >= target
+              ? `<button class="primary" data-savings-action="complete" data-id="${plan.id}">Selesaikan rencana</button>`
+              : ''
+          }
+        </div>
+      </article>
+    `;
+  }).join('');
+
+  $('savingsHistoryRows').innerHTML = savingsHistory.map(item => `
+    <tr>
+      <td>${formatDate(item.date)}</td>
+      <td>${formatTime(item.createdAt)}</td>
+      <td>${esc(item.planName)}</td>
+      <td>${esc(item.activity)}</td>
+      <td>${money(item.amount)}</td>
+      <td>${esc(item.createdByName || 'Tidak tercatat')}</td>
+    </tr>
+  `).join('');
+
+  $('savingsHistoryEmpty').hidden = savingsHistory.length > 0;
+
+  renderCompletedSavings();
+}
+
+function renderCompletedSavings() {
+  const rows = $('completedSavingsRows');
+  if (!rows) return;
+
+  rows.innerHTML = completedSavings.map(item => `
+    <tr>
+      <td>${esc(item.name)}</td>
+      <td>${money(item.target)}</td>
+      <td>${money(item.amountUsed)}</td>
+      <td>${money(item.remainderReturned)}</td>
+      <td>${formatDate(item.completedAt)}</td>
+      <td>${formatTime(item.createdAt)}</td>
+      <td>${esc(item.completedByName)}</td>
+    </tr>
+  `).join('');
+
+  $('completedSavingsEmpty').hidden = completedSavings.length > 0;
+}
+
+function createSavingsPlan() {
+  const name = prompt('Nama rencana tabungan:');
+  if (name === null) return;
+
+  if (!name.trim()) {
+    toast('Nama rencana wajib diisi.');
+    return;
+  }
+
+  const targetInput = prompt('Target tabungan dalam Rupiah:');
+  if (targetInput === null) return;
+
+  const target = Number(targetInput);
+  if (!Number.isFinite(target) || target <= 0) {
+    toast('Target harus berupa nominal lebih dari nol.');
+    return;
+  }
+
+  const note = prompt('Keterangan rencana (boleh dikosongkan):') || '';
+
+  savingsPlans.push({
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    name: name.trim(),
+    note: note.trim(),
+    target,
+    balance: 0,
+    started: false,
+    createdAt: new Date().toISOString(),
+    createdByName: savingsActor()
+  });
+
+  saveSavings();
+  renderAll();
+  toast('Rencana tabungan berhasil dibuat.');
+}
+
+function handleSavingsAction(action, id) {
+  const plan = savingsPlans.find(p => p.id === id);
+  if (!plan) return;
+
+  if (action === 'start') {
+    if (plan.started) return;
+
+    if (!confirm(`Mulai menabung untuk rencana "${plan.name}"?`)) return;
+
+    plan.started = true;
+    addSavingsHistory(plan, 'Mulai menabung', 0);
+    saveSavings();
+    renderAll();
+    toast('Rencana tabungan dimulai.');
+    return;
+  }
+
+  if (action === 'edit') {
+    const name = prompt('Ubah nama rencana:', plan.name);
+    if (name === null) return;
+
+    if (!name.trim()) {
+      toast('Nama rencana tidak boleh kosong.');
+      return;
+    }
+
+    const targetInput = prompt('Ubah target tabungan:', String(plan.target));
+    if (targetInput === null) return;
+
+    const target = Number(targetInput);
+    if (!Number.isFinite(target) || target <= 0 || target < Number(plan.balance || 0)) {
+      toast('Target harus lebih dari nol dan tidak boleh di bawah saldo tabungan.');
+      return;
+    }
+
+    const note = prompt('Ubah keterangan:', plan.note || '');
+    if (note === null) return;
+
+    plan.name = name.trim();
+    plan.target = target;
+    plan.note = note.trim();
+
+    saveSavings();
+    renderAll();
+    toast('Rencana berhasil diperbarui.');
+    return;
+  }
+
+  if (action === 'deposit' || action === 'withdraw') {
+    if (!plan.started) {
+      toast('Mulai rencana terlebih dahulu.');
+      return;
+    }
+
+    const label = action === 'deposit' ? 'setoran' : 'penarikan';
+    const amountInput = prompt(`Masukkan nominal ${label} untuk "${plan.name}":`);
+    if (amountInput === null) return;
+
+    const amount = Number(amountInput);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast('Nominal harus lebih dari nol.');
+      return;
+    }
+
+    if (action === 'deposit') {
+      const s = sums(transactions);
+      const available = s.income - s.expense - totalSavings();
+
+      if (amount > available) {
+        toast(`Saldo utama tidak cukup. Saldo tersedia ${money(available)}.`);
+        return;
+      }
+
+      plan.balance = Number(plan.balance || 0) + amount;
+      addSavingsHistory(plan, 'Setoran', amount);
+    } else {
+      if (amount > Number(plan.balance || 0)) {
+        toast('Saldo tabungan tidak mencukupi.');
+        return;
+      }
+
+      plan.balance = Number(plan.balance || 0) - amount;
+      addSavingsHistory(plan, 'Penarikan ke saldo utama', amount);
+    }
+
+    saveSavings();
+    renderAll();
+    toast(action === 'deposit' ? 'Setoran berhasil.' : 'Penarikan berhasil.');
+    return;
+  }
+
+  if (action === 'delete') {
+    const balance = Number(plan.balance || 0);
+
+    const message = balance > 0
+      ? `Hapus paksa rencana "${plan.name}"? Saldo ${money(balance)} akan dikembalikan ke saldo utama.`
+      : `Hapus rencana "${plan.name}"?`;
+
+    if (!confirm(message)) return;
+
+    if (balance > 0) {
+      addSavingsHistory(plan, 'Hapus paksa – saldo dikembalikan ke saldo utama', balance);
+    }
+
+    savingsPlans = savingsPlans.filter(p => p.id !== id);
+    saveSavings();
+    renderAll();
+    toast(balance > 0
+      ? 'Rencana dihapus dan saldo dikembalikan ke saldo utama.'
+      : 'Rencana berhasil dihapus.');
+    return;
+  }
+
+  if (action === 'complete') {
+    const balance = Number(plan.balance || 0);
+    const target = Number(plan.target || 0);
+
+    if (!plan.started || target <= 0 || balance < target) {
+      toast('Saldo tabungan belum mencapai target.');
+      return;
+    }
+
+    const remainder = balance - target;
+
+    if (!confirm(
+      `Selesaikan "${plan.name}"?\n\n` +
+      `Nominal yang digunakan: ${money(target)}\n` +
+      `Sisa dikembalikan ke saldo utama: ${money(remainder)}`
+    )) return;
+
+    const now = new Date().toISOString();
+    const actor = savingsActor();
+
+    // Catat sebagai pengeluaran biasa agar masuk Transaksi,
+    // Statistik, dan Laporan.
+    transactions.push({
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      type: 'expense',
+      amount: target,
+      note: `Beli pakai tabungan – ${plan.name}`,
+      category: 'Tabungan',
+      date: today(),
+      createdAt: now,
+      createdByName: actor
+    });
+
+    completedSavings.unshift({
+      id: plan.id,
+      name: plan.name,
+      target,
+      amountUsed: target,
+      remainderReturned: remainder,
+      finalBalance: balance,
+      completedAt: today(),
+      createdAt: now,
+      completedByName: actor
+    });
+
+    addSavingsHistory(plan, 'Rencana selesai – dana digunakan', target);
+
+    // Rencana aktif dihapus. Sisa dana otomatis kembali
+    // ke saldo utama karena tidak lagi dihitung sebagai tabungan.
+    savingsPlans = savingsPlans.filter(p => p.id !== id);
+
+    save();
+    saveSavings();
+    renderAll();
+    toast('Rencana selesai. Transaksi pengeluaran sudah dicatat.');
+  }
+}
+
+$('newSavingsPlan').addEventListener('click', createSavingsPlan);
+$('showCompletedSavings').addEventListener('click', () => {
+  $('completedSavingsPanel').hidden = false;
+  renderCompletedSavings();
+});
+
+$('hideCompletedSavings').addEventListener('click', () => {
+  $('completedSavingsPanel').hidden = true;
+});
+$('savingsPlans').addEventListener('click', e => {
+  const button = e.target.closest('[data-savings-action]');
+  if (!button) return;
+
+  handleSavingsAction(button.dataset.savingsAction, button.dataset.id);
+});
   function sums(list){return list.reduce((o,t)=>(o[t.type]+=Number(t.amount),o),{income:0,expense:0})}
   function renderAll() {
   renderDashboard();
