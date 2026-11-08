@@ -45,10 +45,12 @@
 <span>◈</span><div><small>RUANG AKTIF</small><strong id="activeSpaceName">Duitku Utama</strong></div><i>⌄</i>
 </button>
 <div class="space-menu" id="spaceMenu" hidden>
-<button class="space-option selected" type="button" data-space="utama"><span class="space-dot"></span><span><b>Duitku Utama</b><small>Ruang keuangan utama</small></span><span class="space-check">✓</span></button>
-<button class="space-option" type="button" data-space="kedua"><span class="space-dot"></span><span><b>Duitku Kedua</b><small>Ruang keuangan terpisah</small></span><span class="space-check">✓</span></button>
-<p class="space-hint">Pratinjau pemilihan ruang. Data belum terhubung ke Firebase.</p>
-</div>
+  <div id="spaceOptions">
+    <p class="space-hint">Memuat daftar ruang...</p>
+  </div>
+  <p class="space-hint" id="spaceHint">
+    Ruang yang ditampilkan sesuai akses akunmu.
+  </p>
 </div>
 <p class="label">MENU UTAMA</p>
 <nav>
@@ -580,6 +582,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
 
+<script src="js/api.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
