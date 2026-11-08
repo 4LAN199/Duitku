@@ -157,7 +157,88 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !$('resetSpaceModal').hidden) {
     closeResetSpaceModal();
   }
-});function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2600)}
+});
+// FEEDBACK PENGGUNA
+function closeFeedbackModal() {
+  $('feedbackModal').hidden = true;
+}
+
+function openFeedbackModal() {
+  $('feedbackModal').hidden = false;
+  $('feedbackType').focus();
+}
+
+$('openFeedback').addEventListener('click', e => {
+  e.preventDefault();
+  openFeedbackModal();
+});
+
+$('closeFeedback').addEventListener('click', closeFeedbackModal);
+$('cancelFeedback').addEventListener('click', closeFeedbackModal);
+
+$('feedbackModal').addEventListener('click', e => {
+  if (e.target === $('feedbackModal')) {
+    closeFeedbackModal();
+  }
+});
+
+$('feedbackForm').addEventListener('submit', e => {
+  e.preventDefault();
+
+  const type = $('feedbackType').value;
+  const subject = $('feedbackSubject').value.trim();
+  const message = $('feedbackMessage').value.trim();
+
+  if (!subject || !message) {
+    toast('Judul dan penjelasan wajib diisi.');
+    return;
+  }
+
+  const email = $('profileEmail').textContent.trim().toLowerCase();
+
+  const storageKey =
+    `duitku-v2-feedback-${encodeURIComponent(email)}`;
+
+  const feedback = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    type,
+    subject,
+    message,
+    userName: $('profileName').textContent.trim(),
+    userEmail: email,
+    createdAt: new Date().toISOString(),
+    status: 'Tersimpan lokal'
+  };
+
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(storageKey) || '[]'
+    );
+
+    const feedbackList = Array.isArray(saved) ? saved : [];
+    feedbackList.unshift(feedback);
+
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify(feedbackList)
+    );
+
+    $('feedbackForm').reset();
+    closeFeedbackModal();
+
+    toast('Feedback tersimpan di browser ini. Belum terkirim ke pengelola.');
+  } catch {
+    toast('Feedback gagal disimpan. Penyimpanan browser bermasalah.');
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('feedbackModal').hidden) {
+    closeFeedbackModal();
+  }
+});
+  
+  function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2600)}
   function setSpace(id) {
   activeSpace = id in labels ? id : 'utama';
 
