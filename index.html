@@ -427,7 +427,28 @@
 </section>
 
 <div class="modal-backdrop" id="transactionModal" hidden><form class="modal" id="transactionForm"><div class="modal-head"><div><small class="eyebrow">TRANSAKSI BARU</small><h2 id="modalTitle">Tambah transaksi</h2></div><button type="button" class="icon-button" id="closeModal" aria-label="Tutup">×</button></div><label>Jenis transaksi<select id="formType"><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select></label><label>Nominal (Rp)<input id="formAmount" type="number" min="1" step="1" placeholder="Contoh: 50000" required></label><label>Keterangan<input id="formNote" type="text" maxlength="90" placeholder="Contoh: Uang saku" required></label><label>Kategori<select id="formCategory"><option>Makanan</option><option>Transport</option><option>Belanja</option><option>Gaji</option><option>Hiburan</option><option>Pendidikan</option><option>Kesehatan</option><option>Lainnya</option></select></label><label>Tanggal<input id="formDate" type="date" required></label><div class="modal-actions"><button type="button" class="secondary" id="cancelModal">Batal</button><button type="submit" class="primary">Simpan transaksi</button></div></form></div>
-<div class="toast" id="toast" role="status"></div>
+<!-- KONFIRMASI LOGOUT -->
+<div class="modal-backdrop" id="logoutConfirmModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="logoutConfirmTitle">
+    <div class="modal-head">
+      <div>
+        <small class="eyebrow">KONFIRMASI</small>
+        <h2 id="logoutConfirmTitle">Keluar dari Duitku?</h2>
+      </div>
+      <button type="button" class="icon-button" id="cancelLogoutTop" aria-label="Tutup">×</button>
+    </div>
+
+    <p style="color:var(--muted);font-size:12px;line-height:1.6">
+      Apakah kamu yakin ingin keluar dari akun? Pastikan semua aktivitas sudah selesai.
+    </p>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary" id="cancelLogout">Batal</button>
+      <button type="button" class="primary" id="confirmLogout">Ya, Keluar</button>
+    </div>
+  </div>
+</div>
+  <div class="toast" id="toast" role="status"></div>
 <footer>Duitku　•　Pencatatan Keuangan Pribadi　•　Pratinjau antarmuka</footer>
 </main></div>
 
