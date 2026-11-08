@@ -91,7 +91,6 @@ function totalSavings() {
     0
   );
 }
-  const storageKey=()=>`duitku-v2-transactions-${activeSpace}`;
   function load(){try{transactions=JSON.parse(localStorage.getItem(storageKey())||'[]')}catch{transactions=[]}}
   function save(){try{localStorage.setItem(storageKey(),JSON.stringify(transactions))}catch{toast('Penyimpanan browser penuh atau tidak tersedia.')}}
   function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2600)}
