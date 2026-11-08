@@ -34,6 +34,7 @@ import {
   const db = getFirestore(app);
 
   const DEVELOPER_EMAIL = "iqbalmaulanaal123@gmail.com";
+  let registering = false;
 
   const initials = name =>
     String(name || "Duitku")
@@ -184,6 +185,7 @@ import {
         message("Konfirmasi kata sandi tidak cocok.", true);
         return;
       }
+      registering = true;
 
       try {
         message("Membuat akun Firebase...");
@@ -212,6 +214,9 @@ import {
             createdAt: serverTimestamp()
           });
         }
+        const user = await loadUserProfile(credential.user);
+        registering = false;
+        showApp(user);
 
         message("Akun berhasil dibuat.");
       } catch (error) {
@@ -270,8 +275,9 @@ import {
         $("registerPassword").value = "";
         $("registerConfirm").value = "";
       } catch (error) {
-        alert(friendlyError(error));
-      }
+  registering = false;
+  message(friendlyError(error), true);
+}
     }
 
     $("logoutButton").addEventListener("click", requestLogout);
@@ -294,10 +300,12 @@ import {
     });
 
     onAuthStateChanged(auth, async firebaseUser => {
-      if (!firebaseUser) {
-        showLogin();
-        return;
-      }
+  if (registering) return;
+
+  if (!firebaseUser) {
+    showLogin();
+    return;
+  }
 
       try {
         message("Memuat profil akun...");
