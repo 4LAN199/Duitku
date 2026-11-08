@@ -101,7 +101,12 @@
       <h1>Selamat datang di <span id="welcomeSpaceName">Duitku Utama</span>.</h1>
       <p id="welcomeDescription">Pantau dan kelola keuanganmu dengan lebih mudah.</p>
     </div>
-    <div class="date" id="today">Hari ini</div>
+    <div class="dashboard-actions">
+  <div class="date" id="today">Hari ini</div>
+  <button type="button" class="secondary" id="resetSpaceData">
+    Reset Data
+  </button>
+</div>
   </section>
 
   <section class="stats enter delay">
@@ -427,7 +432,37 @@
 </section>
 
 <div class="modal-backdrop" id="transactionModal" hidden><form class="modal" id="transactionForm"><div class="modal-head"><div><small class="eyebrow">TRANSAKSI BARU</small><h2 id="modalTitle">Tambah transaksi</h2></div><button type="button" class="icon-button" id="closeModal" aria-label="Tutup">×</button></div><label>Jenis transaksi<select id="formType"><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select></label><label>Nominal (Rp)<input id="formAmount" type="number" min="1" step="1" placeholder="Contoh: 50000" required></label><label>Keterangan<input id="formNote" type="text" maxlength="90" placeholder="Contoh: Uang saku" required></label><label>Kategori<select id="formCategory"><option>Makanan</option><option>Transport</option><option>Belanja</option><option>Gaji</option><option>Hiburan</option><option>Pendidikan</option><option>Kesehatan</option><option>Lainnya</option></select></label><label>Tanggal<input id="formDate" type="date" required></label><div class="modal-actions"><button type="button" class="secondary" id="cancelModal">Batal</button><button type="submit" class="primary">Simpan transaksi</button></div></form></div>
-<!-- KONFIRMASI LOGOUT -->
+<!-- KONFIRMASI RESET DATA -->
+<div class="modal-backdrop" id="resetSpaceModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true"
+       aria-labelledby="resetSpaceTitle">
+
+    <div class="modal-head">
+      <div>
+        <small class="eyebrow">PERINGATAN</small>
+        <h2 id="resetSpaceTitle">Reset seluruh data?</h2>
+      </div>
+      <button type="button" class="icon-button"
+              id="closeResetSpace" aria-label="Tutup">×</button>
+    </div>
+
+    <p class="muted" id="resetSpaceDescription">
+      Seluruh transaksi dan data tabungan di ruang aktif akan dihapus.
+      Data tidak dapat dikembalikan.
+    </p>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary" id="cancelResetSpace">
+        Batal
+      </button>
+      <button type="button" class="primary danger" id="confirmResetSpace">
+        Ya, Reset Data
+      </button>
+    </div>
+
+  </div>
+</div>
+  <!-- KONFIRMASI LOGOUT -->
 <div class="modal-backdrop" id="logoutConfirmModal" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="logoutConfirmTitle">
     <div class="modal-head">
