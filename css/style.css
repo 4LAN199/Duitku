@@ -688,3 +688,72 @@ main.room-changing .page-section {
     padding: 16px;
   }
 }
+/* POP-UP FORM TABUNGAN */
+
+.savings-dialog-description {
+  white-space: pre-line;
+  line-height: 1.7;
+  margin: 12px 0 20px;
+}
+
+.savings-dialog-fields {
+  display: grid;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.savings-form-field {
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.savings-form-field input,
+.savings-form-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 10px;
+  background: var(--panel, #fff);
+  color: var(--text, #222);
+  font: inherit;
+  font-weight: 400;
+  outline: none;
+}
+
+.savings-form-field input:focus,
+.savings-form-field textarea:focus {
+  border-color: var(--primary, #087f5b);
+  box-shadow: 0 0 0 3px rgba(8, 127, 91, .10);
+}
+
+.savings-form-field textarea {
+  resize: vertical;
+  min-height: 75px;
+}
+
+#savingsActionModal .modal {
+  width: min(480px, calc(100% - 32px));
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+#savingsActionModal .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+#savingsActionModal .modal-actions button {
+  min-width: 110px;
+}
+
+#savingsActionModal button.danger {
+  background: #dc3545;
+  color: #fff;
+  border-color: #dc3545;
+}
