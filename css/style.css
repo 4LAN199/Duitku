@@ -779,3 +779,34 @@ main.room-changing .page-section {
 .welcome-actions button {
   min-width: 110px;
 }
+
+/* RESET DATA DASHBOARD */
+
+.dashboard-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+#resetSpaceData {
+  color: #d97765;
+  border-color: #d97765;
+}
+
+#resetSpaceData:hover {
+  background: #d9776515;
+}
+
+#confirmResetSpace {
+  background: #dc3545;
+  border-color: #dc3545;
+  color: #fff;
+}
+
+@media (max-width: 500px) {
+  .dashboard-actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+}
