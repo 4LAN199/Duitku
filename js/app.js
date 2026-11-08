@@ -352,26 +352,6 @@ async function initializeRooms() {
   }
 }
 
-
-  try {
-    localStorage.setItem('duitku-active-space-preview', activeSpace);
-  } catch {}
-
-  load();
-loadSavings();
-renderAll();
-
-  const main = document.querySelector('main');
-  main.classList.remove('room-changing');
-
-  void main.offsetWidth;
-
-  main.classList.add('room-changing');
-
-  setTimeout(() => {
-    main.classList.remove('room-changing');
-  }, 350);
-}
   const toggle=$('spaceToggle'),menu=$('spaceMenu');toggle.addEventListener('click',()=>{menu.hidden=!menu.hidden;toggle.setAttribute('aria-expanded',String(!menu.hidden))});
 $("spaceOptions").addEventListener("click", e => {
   const option = e.target.closest("[data-space]");
