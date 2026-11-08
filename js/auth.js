@@ -61,15 +61,42 @@
       }catch(err){message(err.message||"Gagal masuk.",true);}
     });
     $("forgotPassword").addEventListener("click",()=>message("Fitur reset kata sandi akan tersedia setelah Firebase Auth dihubungkan."));
-    function logout(){
-  showLogin();
-  $("loginPassword").value="";
-  $("registerPassword").value="";
-  $("registerConfirm").value="";
+    function requestLogout() {
+  $("logoutConfirmModal").hidden = false;
 }
 
-$("logoutButton").addEventListener("click", logout);
-$("logoutButtonMobile").addEventListener("click", logout);
+function closeLogoutConfirm() {
+  $("logoutConfirmModal").hidden = true;
+}
+
+function logout() {
+  closeLogoutConfirm();
+
+  showLogin();
+
+  $("loginPassword").value = "";
+  $("registerPassword").value = "";
+  $("registerConfirm").value = "";
+}
+
+$("logoutButton").addEventListener("click", requestLogout);
+$("logoutButtonMobile").addEventListener("click", requestLogout);
+
+$("cancelLogout").addEventListener("click", closeLogoutConfirm);
+$("cancelLogoutTop").addEventListener("click", closeLogoutConfirm);
+$("confirmLogout").addEventListener("click", logout);
+
+$("logoutConfirmModal").addEventListener("click", e => {
+  if (e.target === $("logoutConfirmModal")) {
+    closeLogoutConfirm();
+  }
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("logoutConfirmModal").hidden) {
+    closeLogoutConfirm();
+  }
+});
     let session=null; try{session=JSON.parse(localStorage.getItem(SESSION_KEY)||"null")}catch{}
     const user=session?.email?readUsers().find(u=>u.email===session.email):null;
     if(user) showApp(user); else showLogin();
