@@ -106,7 +106,58 @@ function totalSavings() {
 }
   function load(){try{transactions=JSON.parse(localStorage.getItem(storageKey())||'[]')}catch{transactions=[]}}
   function save(){try{localStorage.setItem(storageKey(),JSON.stringify(transactions))}catch{toast('Penyimpanan browser penuh atau tidak tersedia.')}}
-  function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2600)}
+  
+  // RESET SELURUH DATA PADA RUANG AKTIF
+
+function closeResetSpaceModal() {
+  $('resetSpaceModal').hidden = true;
+}
+
+function openResetSpaceModal() {
+  $('resetSpaceDescription').textContent =
+    `Seluruh transaksi, rencana tabungan, riwayat tabungan, dan rencana selesai di ${labels[activeSpace]} akan dihapus permanen. Ruang lainnya tidak akan terpengaruh.`;
+
+  $('resetSpaceModal').hidden = false;
+}
+
+function resetActiveSpace() {
+  // Hapus data hanya untuk ruang yang sedang aktif.
+  localStorage.removeItem(storageKey());
+  localStorage.removeItem(savingsPlansKey());
+  localStorage.removeItem(savingsHistoryKey());
+  localStorage.removeItem(completedSavingsKey());
+
+  // Kosongkan data di memori.
+  transactions = [];
+  savingsPlans = [];
+  savingsHistory = [];
+  completedSavings = [];
+
+  // Perbarui seluruh tampilan.
+  renderAll();
+
+  closeResetSpaceModal();
+  toast(`${labels[activeSpace]} berhasil direset.`);
+}
+
+$('resetSpaceData').addEventListener('click', openResetSpaceModal);
+
+$('closeResetSpace').addEventListener('click', closeResetSpaceModal);
+$('cancelResetSpace').addEventListener('click', closeResetSpaceModal);
+
+$('confirmResetSpace').addEventListener('click', resetActiveSpace);
+
+$('resetSpaceModal').addEventListener('click', e => {
+  if (e.target === $('resetSpaceModal')) {
+    closeResetSpaceModal();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('resetSpaceModal').hidden) {
+    closeResetSpaceModal();
+  }
+});function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2600)}
   function setSpace(id) {
   activeSpace = id in labels ? id : 'utama';
 
