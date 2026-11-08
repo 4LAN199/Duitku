@@ -52,39 +52,6 @@ const storageKey = () => `duitku-v2-transactions-${activeSpace}`;
 const savingsPlansKey = () => `duitku-v2-savings-plans-${activeSpace}`;
 const savingsHistoryKey = () => `duitku-v2-savings-history-${activeSpace}`;
 
-function loadSavings() {
-  try {
-    savingsPlans = JSON.parse(
-      localStorage.getItem(savingsPlansKey()) || '[]'
-    );
-    savingsHistory = JSON.parse(
-      localStorage.getItem(savingsHistoryKey()) || '[]'
-    );
-
-    if (!Array.isArray(savingsPlans)) savingsPlans = [];
-    if (!Array.isArray(savingsHistory)) savingsHistory = [];
-  } catch {
-    savingsPlans = [];
-    savingsHistory = [];
-  }
-}
-
-function saveSavings() {
-  try {
-    localStorage.setItem(
-      savingsPlansKey(),
-      JSON.stringify(savingsPlans)
-    );
-
-    localStorage.setItem(
-      savingsHistoryKey(),
-      JSON.stringify(savingsHistory)
-    );
-  } catch {
-    toast('Penyimpanan browser penuh atau tidak tersedia.');
-  }
-}
-
 let completedSavings = [];
 
 const completedSavingsKey = () =>
@@ -315,41 +282,165 @@ function renderCompletedSavings() {
 
   $('completedSavingsEmpty').hidden = completedSavings.length > 0;
 }
+function closeSavingsDialog() {
+  $('savingsActionModal').hidden = true;
+  $('savingsDialogContent').innerHTML = '';
+}
 
-function createSavingsPlan() {
-  const name = prompt('Nama rencana tabungan:');
-  if (name === null) return;
+function openSavingsDialog({
+  title,
+  description = '',
+  fields = '',
+  confirmText = 'Simpan',
+  danger = false,
+  onSubmit
+}) {
+  const content = $('savingsDialogContent');
 
-  if (!name.trim()) {
-    toast('Nama rencana wajib diisi.');
-    return;
-  }
+  content.innerHTML = `
+    <form id="savingsDialogForm">
+      <div class="modal-head">
+        <div>
+          <small class="eyebrow">TABUNGAN</small>
+          <h2 id="savingsDialogTitle">${esc(title)}</h2>
+        </div>
+        <button type="button" class="icon-button" id="closeSavingsDialog" aria-label="Tutup">×</button>
+      </div>
 
-  const targetInput = prompt('Target tabungan dalam Rupiah:');
-  if (targetInput === null) return;
+      ${
+        description
+          ? `<p class="muted savings-dialog-description">${esc(description)}</p>`
+          : ''
+      }
 
-  const target = Number(targetInput);
-  if (!Number.isFinite(target) || target <= 0) {
-    toast('Target harus berupa nominal lebih dari nol.');
-    return;
-  }
+      <div class="savings-dialog-fields">
+        ${fields}
+      </div>
 
-  const note = prompt('Keterangan rencana (boleh dikosongkan):') || '';
+      <div class="modal-actions">
+        <button type="button" class="secondary" id="cancelSavingsDialog">Batal</button>
+        <button type="submit" class="${danger ? 'danger' : 'primary'}">
+          ${esc(confirmText)}
+        </button>
+      </div>
+    </form>
+  `;
 
-  savingsPlans.push({
+  $('savingsActionModal').hidden = false;
+
+  const closeButtons = [
+    $('closeSavingsDialog'),
+    $('cancelSavingsDialog')
+  ];
+
+  closeButtons.forEach(button => {
+    button.addEventListener('click', closeSavingsDialog);
+  });
+
+  $('savingsDialogForm').addEventListener('submit', e => {
+    e.preventDefault();
+
+    const result = onSubmit(new FormData(e.currentTarget));
+
+    if (result !== false) {
+      closeSavingsDialog();
+    }
+  });
+
+  const firstInput = content.querySelector('input, textarea');
+  if (firstInput) firstInput.focus();
+}
+
+function showSavingsConfirmation({
+  title,
+  description,
+  confirmText = 'Ya, Lanjutkan',
+  danger = false,
+  onConfirm
+}) {
+  openSavingsDialog({
+    title,
+    description,
+    confirmText,
+    danger,
+    onSubmit: () => {
+      onConfirm();
+    }
+  });
+}
+
+function savingsField(label, name, value = '', type = 'text', placeholder = '') {
+  return `
+    <label class="savings-form-field">
+      <span>${esc(label)}</span>
+      <input
+        type="${type}"
+        name="${name}"
+        value="${esc(value)}"
+        placeholder="${esc(placeholder)}"
+        ${type === 'number' ? 'min="1" step="1"' : ''}
+        required
+      >
+    </label>
+  `;
+}
+
+function savingsActor() {
+  return $('profileName').textContent.trim() || 'Pengguna Duitku';
+}
+
+function addSavingsHistory(plan, activity, amount) {
+  savingsHistory.unshift({
     id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    name: name.trim(),
-    note: note.trim(),
-    target,
-    balance: 0,
-    started: false,
+    planName: plan.name,
+    activity,
+    amount: Number(amount),
+    date: today(),
     createdAt: new Date().toISOString(),
     createdByName: savingsActor()
   });
+}
 
-  saveSavings();
-  renderAll();
-  toast('Rencana tabungan berhasil dibuat.');
+function createSavingsPlan() {
+  openSavingsDialog({
+    title: 'Buat Rencana Tabungan',
+    description: 'Tentukan tujuan dan target dana yang ingin kamu kumpulkan.',
+    fields: `
+      ${savingsField('Nama rencana', 'name', '', 'text', 'Contoh: Beli laptop')}
+      ${savingsField('Target tabungan (Rupiah)', 'target', '', 'number', 'Contoh: 5000000')}
+
+      <label class="savings-form-field">
+        <span>Keterangan (opsional)</span>
+        <textarea name="note" rows="3" placeholder="Ceritakan tujuan tabungan ini"></textarea>
+      </label>
+    `,
+    confirmText: 'Buat Tabungan',
+    onSubmit: data => {
+      const name = String(data.get('name') || '').trim();
+      const target = Number(data.get('target'));
+      const note = String(data.get('note') || '').trim();
+
+      if (!name || !Number.isFinite(target) || target <= 0) {
+        toast('Nama dan target tabungan wajib diisi dengan benar.');
+        return false;
+      }
+
+      savingsPlans.push({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        name,
+        note,
+        target,
+        balance: 0,
+        started: false,
+        createdAt: new Date().toISOString(),
+        createdByName: savingsActor()
+      });
+
+      saveSavings();
+      renderAll();
+      toast('Rencana tabungan berhasil dibuat.');
+    }
+  });
 }
 
 function handleSavingsAction(action, id) {
@@ -357,46 +448,59 @@ function handleSavingsAction(action, id) {
   if (!plan) return;
 
   if (action === 'start') {
-    if (plan.started) return;
-
-    if (!confirm(`Mulai menabung untuk rencana "${plan.name}"?`)) return;
-
-    plan.started = true;
-    addSavingsHistory(plan, 'Mulai menabung', 0);
-    saveSavings();
-    renderAll();
-    toast('Rencana tabungan dimulai.');
+    showSavingsConfirmation({
+      title: 'Mulai Menabung?',
+      description: `Rencana "${plan.name}" akan diaktifkan. Setelah dimulai, kamu bisa melakukan setoran dan penarikan.`,
+      confirmText: 'Mulai Menabung',
+      onConfirm: () => {
+        plan.started = true;
+        addSavingsHistory(plan, 'Mulai menabung', 0);
+        saveSavings();
+        renderAll();
+        toast('Rencana tabungan dimulai.');
+      }
+    });
     return;
   }
 
   if (action === 'edit') {
-    const name = prompt('Ubah nama rencana:', plan.name);
-    if (name === null) return;
+    openSavingsDialog({
+      title: 'Edit Rencana Tabungan',
+      description: 'Perbarui nama, target, atau keterangan rencana.',
+      fields: `
+        ${savingsField('Nama rencana', 'name', plan.name)}
+        ${savingsField('Target tabungan (Rupiah)', 'target', plan.target, 'number')}
 
-    if (!name.trim()) {
-      toast('Nama rencana tidak boleh kosong.');
-      return;
-    }
+        <label class="savings-form-field">
+          <span>Keterangan (opsional)</span>
+          <textarea name="note" rows="3">${esc(plan.note || '')}</textarea>
+        </label>
+      `,
+      confirmText: 'Simpan Perubahan',
+      onSubmit: data => {
+        const name = String(data.get('name') || '').trim();
+        const target = Number(data.get('target'));
+        const note = String(data.get('note') || '').trim();
 
-    const targetInput = prompt('Ubah target tabungan:', String(plan.target));
-    if (targetInput === null) return;
+        if (
+          !name ||
+          !Number.isFinite(target) ||
+          target <= 0 ||
+          target < Number(plan.balance || 0)
+        ) {
+          toast('Target harus lebih dari nol dan tidak boleh di bawah saldo tabungan.');
+          return false;
+        }
 
-    const target = Number(targetInput);
-    if (!Number.isFinite(target) || target <= 0 || target < Number(plan.balance || 0)) {
-      toast('Target harus lebih dari nol dan tidak boleh di bawah saldo tabungan.');
-      return;
-    }
+        plan.name = name;
+        plan.target = target;
+        plan.note = note;
 
-    const note = prompt('Ubah keterangan:', plan.note || '');
-    if (note === null) return;
-
-    plan.name = name.trim();
-    plan.target = target;
-    plan.note = note.trim();
-
-    saveSavings();
-    renderAll();
-    toast('Rencana berhasil diperbarui.');
+        saveSavings();
+        renderAll();
+        toast('Rencana berhasil diperbarui.');
+      }
+    });
     return;
   }
 
@@ -406,62 +510,84 @@ function handleSavingsAction(action, id) {
       return;
     }
 
-    const label = action === 'deposit' ? 'setoran' : 'penarikan';
-    const amountInput = prompt(`Masukkan nominal ${label} untuk "${plan.name}":`);
-    if (amountInput === null) return;
+    const isDeposit = action === 'deposit';
 
-    const amount = Number(amountInput);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      toast('Nominal harus lebih dari nol.');
-      return;
-    }
+    openSavingsDialog({
+      title: isDeposit ? 'Setor Tabungan' : 'Tarik Tabungan',
+      description: `${plan.name} · Saldo saat ini ${money(plan.balance)}.`,
+      fields: savingsField(
+        'Nominal Rupiah',
+        'amount',
+        '',
+        'number',
+        'Masukkan nominal'
+      ),
+      confirmText: isDeposit ? 'Setor Sekarang' : 'Tarik Sekarang',
+      onSubmit: data => {
+        const amount = Number(data.get('amount'));
 
-    if (action === 'deposit') {
-      const s = sums(transactions);
-      const available = s.income - s.expense - totalSavings();
+        if (!Number.isFinite(amount) || amount <= 0) {
+          toast('Nominal harus lebih dari nol.');
+          return false;
+        }
 
-      if (amount > available) {
-        toast(`Saldo utama tidak cukup. Saldo tersedia ${money(available)}.`);
-        return;
+        if (isDeposit) {
+          const s = sums(transactions);
+          const available = s.income - s.expense - totalSavings();
+
+          if (amount > available) {
+            toast(`Saldo utama tidak cukup. Saldo tersedia ${money(available)}.`);
+            return false;
+          }
+
+          plan.balance = Number(plan.balance || 0) + amount;
+          addSavingsHistory(plan, 'Setoran', amount);
+        } else {
+          if (amount > Number(plan.balance || 0)) {
+            toast('Saldo tabungan tidak mencukupi.');
+            return false;
+          }
+
+          plan.balance = Number(plan.balance || 0) - amount;
+          addSavingsHistory(plan, 'Penarikan ke saldo utama', amount);
+        }
+
+        saveSavings();
+        renderAll();
+        toast(isDeposit ? 'Setoran berhasil.' : 'Penarikan berhasil.');
       }
-
-      plan.balance = Number(plan.balance || 0) + amount;
-      addSavingsHistory(plan, 'Setoran', amount);
-    } else {
-      if (amount > Number(plan.balance || 0)) {
-        toast('Saldo tabungan tidak mencukupi.');
-        return;
-      }
-
-      plan.balance = Number(plan.balance || 0) - amount;
-      addSavingsHistory(plan, 'Penarikan ke saldo utama', amount);
-    }
-
-    saveSavings();
-    renderAll();
-    toast(action === 'deposit' ? 'Setoran berhasil.' : 'Penarikan berhasil.');
+    });
     return;
   }
 
   if (action === 'delete') {
     const balance = Number(plan.balance || 0);
 
-    const message = balance > 0
-      ? `Hapus paksa rencana "${plan.name}"? Saldo ${money(balance)} akan dikembalikan ke saldo utama.`
-      : `Hapus rencana "${plan.name}"?`;
+    showSavingsConfirmation({
+      title: 'Hapus Rencana?',
+      description: balance > 0
+        ? `Rencana "${plan.name}" memiliki saldo ${money(balance)}. Jika dihapus, seluruh saldo tersebut akan dikembalikan ke saldo utama.`
+        : `Rencana "${plan.name}" akan dihapus. Tindakan ini tidak bisa dibatalkan.`,
+      confirmText: 'Ya, Hapus',
+      danger: true,
+      onConfirm: () => {
+        if (balance > 0) {
+          addSavingsHistory(
+            plan,
+            'Hapus paksa – saldo dikembalikan ke saldo utama',
+            balance
+          );
+        }
 
-    if (!confirm(message)) return;
+        savingsPlans = savingsPlans.filter(p => p.id !== id);
+        saveSavings();
+        renderAll();
 
-    if (balance > 0) {
-      addSavingsHistory(plan, 'Hapus paksa – saldo dikembalikan ke saldo utama', balance);
-    }
-
-    savingsPlans = savingsPlans.filter(p => p.id !== id);
-    saveSavings();
-    renderAll();
-    toast(balance > 0
-      ? 'Rencana dihapus dan saldo dikembalikan ke saldo utama.'
-      : 'Rencana berhasil dihapus.');
+        toast(balance > 0
+          ? 'Rencana dihapus dan saldo dikembalikan ke saldo utama.'
+          : 'Rencana berhasil dihapus.');
+      }
+    });
     return;
   }
 
@@ -476,54 +602,57 @@ function handleSavingsAction(action, id) {
 
     const remainder = balance - target;
 
-    if (!confirm(
-      `Selesaikan "${plan.name}"?\n\n` +
-      `Nominal yang digunakan: ${money(target)}\n` +
-      `Sisa dikembalikan ke saldo utama: ${money(remainder)}`
-    )) return;
+    showSavingsConfirmation({
+      title: 'Selesaikan Rencana?',
+      description:
+        `Rencana: ${plan.name}\n` +
+        `Dana yang digunakan: ${money(target)}\n` +
+        `Sisa dikembalikan ke saldo utama: ${money(remainder)}\n\n` +
+        'Dana yang digunakan akan dicatat sebagai transaksi pengeluaran.',
+      confirmText: 'Selesaikan',
+      onConfirm: () => {
+        const now = new Date().toISOString();
+        const actor = savingsActor();
 
-    const now = new Date().toISOString();
-    const actor = savingsActor();
+        transactions.push({
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          type: 'expense',
+          amount: target,
+          note: `Beli pakai tabungan – ${plan.name}`,
+          category: 'Tabungan',
+          date: today(),
+          createdAt: now,
+          createdByName: actor
+        });
 
-    // Catat sebagai pengeluaran biasa agar masuk Transaksi,
-    // Statistik, dan Laporan.
-    transactions.push({
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      type: 'expense',
-      amount: target,
-      note: `Beli pakai tabungan – ${plan.name}`,
-      category: 'Tabungan',
-      date: today(),
-      createdAt: now,
-      createdByName: actor
+        completedSavings.unshift({
+          id: plan.id,
+          name: plan.name,
+          target,
+          amountUsed: target,
+          remainderReturned: remainder,
+          finalBalance: balance,
+          completedAt: today(),
+          createdAt: now,
+          completedByName: actor
+        });
+
+        addSavingsHistory(plan, 'Rencana selesai – dana digunakan', target);
+
+        savingsPlans = savingsPlans.filter(p => p.id !== id);
+
+        save();
+        saveSavings();
+        renderAll();
+
+        toast('Rencana selesai. Transaksi pengeluaran sudah dicatat.');
+      }
     });
-
-    completedSavings.unshift({
-      id: plan.id,
-      name: plan.name,
-      target,
-      amountUsed: target,
-      remainderReturned: remainder,
-      finalBalance: balance,
-      completedAt: today(),
-      createdAt: now,
-      completedByName: actor
-    });
-
-    addSavingsHistory(plan, 'Rencana selesai – dana digunakan', target);
-
-    // Rencana aktif dihapus. Sisa dana otomatis kembali
-    // ke saldo utama karena tidak lagi dihitung sebagai tabungan.
-    savingsPlans = savingsPlans.filter(p => p.id !== id);
-
-    save();
-    saveSavings();
-    renderAll();
-    toast('Rencana selesai. Transaksi pengeluaran sudah dicatat.');
   }
 }
 
 $('newSavingsPlan').addEventListener('click', createSavingsPlan);
+
 $('showCompletedSavings').addEventListener('click', () => {
   $('completedSavingsPanel').hidden = false;
   renderCompletedSavings();
@@ -532,12 +661,26 @@ $('showCompletedSavings').addEventListener('click', () => {
 $('hideCompletedSavings').addEventListener('click', () => {
   $('completedSavingsPanel').hidden = true;
 });
+
 $('savingsPlans').addEventListener('click', e => {
   const button = e.target.closest('[data-savings-action]');
   if (!button) return;
 
   handleSavingsAction(button.dataset.savingsAction, button.dataset.id);
 });
+
+$('savingsActionModal').addEventListener('click', e => {
+  if (e.target === $('savingsActionModal')) {
+    closeSavingsDialog();
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('savingsActionModal').hidden) {
+    closeSavingsDialog();
+  }
+});
+
   function sums(list){return list.reduce((o,t)=>(o[t.type]+=Number(t.amount),o),{income:0,expense:0})}
   function renderAll() {
   renderDashboard();
