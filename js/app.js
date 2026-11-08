@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded",()=>{
   DuitkuTheme.init(); DuitkuAnimation.start();
   
+  
 const $ = id => document.getElementById(id);
 const money = n => new Intl.NumberFormat('id-ID', {
   style: 'currency',
@@ -8,7 +9,9 @@ const money = n => new Intl.NumberFormat('id-ID', {
   maximumFractionDigits: 0
 }).format(n || 0);
 const today = () => new Date().toISOString().slice(0, 10);
-
+window.addEventListener("duitku:authenticated", () => {
+  initializeRooms();
+});
 // Sidebar toggle
 const app = $('app');
 const sidebarToggle = $('sidebarToggle');
@@ -37,12 +40,10 @@ document.addEventListener('click', e => {
   }
 });
 
-  const labels = {
-  utama: 'Duitku Utama',
-  kedua: 'Duitku Kedua'
-};
-
-let activeSpace = 'utama';
+const labels = {};
+let availableRooms = [];
+let activeRoom = null;
+let activeSpace = null;
 let editingId = null;
 let transactions = [];
 let savingsPlans = [];
@@ -239,15 +240,118 @@ document.addEventListener('keydown', e => {
 });
   
   function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2600)}
-  function setSpace(id) {
-  activeSpace = id in labels ? id : 'utama';
+  
+function setSpace(roomId) {
+  const room = availableRooms.find(
+    item => item.roomId === roomId
+  );
 
-  $('activeSpaceName').textContent = labels[activeSpace];
-  $('crumbSpaceName').textContent = labels[activeSpace];
+  if (!room) {
+    toast("Ruang tidak ditemukan atau tidak dapat diakses.");
+    return;
+  }
 
-  document.querySelectorAll('[data-space]').forEach(o => {
-    o.classList.toggle('selected', o.dataset.space === activeSpace);
+  activeRoom = room;
+  activeSpace = room.roomId;
+
+  $("activeSpaceName").textContent = room.name;
+  $("crumbSpaceName").textContent = room.name;
+  $("welcomeSpaceName").textContent = room.name;
+
+  document.querySelectorAll("[data-space]").forEach(option => {
+    option.classList.toggle(
+      "selected",
+      option.dataset.space === room.roomId
+    );
   });
+
+  try {
+    localStorage.setItem(
+      "duitku-active-space-preview",
+      room.roomId
+    );
+  } catch {}
+
+  load();
+  loadSavings();
+  renderAll();
+
+  const main = document.querySelector("main");
+  main.classList.remove("room-changing");
+  void main.offsetWidth;
+  main.classList.add("room-changing");
+
+  setTimeout(() => {
+    main.classList.remove("room-changing");
+  }, 350);
+}
+
+function renderRoomOptions() {
+  const container = $("spaceOptions");
+
+  container.innerHTML = availableRooms.map(room => `
+    <button
+      class="space-option"
+      type="button"
+      data-space="${esc(room.roomId)}"
+    >
+      <span class="space-dot"></span>
+      <span>
+        <b>${esc(room.name)}</b>
+        <small>${esc(room.role)}</small>
+      </span>
+      <span class="space-check">✓</span>
+    </button>
+  `).join("");
+}
+
+async function initializeRooms() {
+  const container = $("spaceOptions");
+
+  try {
+    container.innerHTML =
+      '<p class="space-hint">Memuat daftar ruang...</p>';
+
+    availableRooms = await window.DuitkuAPI.listRooms();
+
+    if (!availableRooms.length) {
+      container.innerHTML =
+        '<p class="space-hint">Kamu belum tergabung dalam ruang mana pun.</p>';
+      return;
+    }
+
+    Object.keys(labels).forEach(key => delete labels[key]);
+
+    availableRooms.forEach(room => {
+      labels[room.roomId] = room.name;
+    });
+
+    renderRoomOptions();
+
+    const savedRoom = localStorage.getItem(
+      "duitku-active-space-preview"
+    );
+
+    const selectedRoom = availableRooms.find(
+      room => room.roomId === savedRoom
+    );
+
+    setSpace(
+      selectedRoom
+        ? selectedRoom.roomId
+        : availableRooms[0].roomId
+    );
+
+  } catch (error) {
+    console.error("Gagal memuat ruang:", error);
+
+    container.innerHTML =
+      '<p class="space-hint">Gagal memuat ruang. Silakan muat ulang halaman.</p>';
+
+    toast(error.message);
+  }
+}
+
 
   try {
     localStorage.setItem('duitku-active-space-preview', activeSpace);
@@ -268,7 +372,26 @@ renderAll();
     main.classList.remove('room-changing');
   }, 350);
 }
-  const toggle=$('spaceToggle'),menu=$('spaceMenu');toggle.addEventListener('click',()=>{menu.hidden=!menu.hidden;toggle.setAttribute('aria-expanded',String(!menu.hidden))});document.querySelectorAll('[data-space]').forEach(o=>o.addEventListener('click',()=>{setSpace(o.dataset.space);menu.hidden=true;toggle.setAttribute('aria-expanded','false');toast(`Beralih ke ${labels[activeSpace]}`)}));document.addEventListener('click',e=>{if(!e.target.closest('.space-wrap')){menu.hidden=true;toggle.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+  const toggle=$('spaceToggle'),menu=$('spaceMenu');toggle.addEventListener('click',()=>{menu.hidden=!menu.hidden;toggle.setAttribute('aria-expanded',String(!menu.hidden))});
+$("spaceOptions").addEventListener("click", e => {
+  const option = e.target.closest("[data-space]");
+  if (!option) return;
+
+  const roomId = option.dataset.space;
+
+  if (roomId === activeSpace) {
+    menu.hidden = true;
+    toggle.setAttribute("aria-expanded", "false");
+    return;
+  }
+
+  setSpace(roomId);
+  menu.hidden = true;
+  toggle.setAttribute("aria-expanded", "false");
+
+  toast(`Beralih ke ${labels[activeSpace]}`);
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.space-wrap')){menu.hidden=true;toggle.setAttribute('aria-expanded','false')}});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
   function go(page) {
   const valid = [
   'dashboard',
