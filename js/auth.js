@@ -20,14 +20,44 @@
     $("authSubtitle").textContent=login?"Kelola keuanganmu dengan lebih teratur.":"Daftar untuk mulai mencatat keuangan.";
     message("");
   }
-  function showApp(user){
-    $("authScreen").hidden=true; $("app").style.display="flex";
-    $("profileName").textContent=user.name; $("profileEmail").textContent=user.email;
-    $("profileInitials").textContent=initials(user.name);
-    document.querySelector(".preview").textContent="● Pratinjau desain";
-    try { localStorage.setItem(SESSION_KEY,JSON.stringify({email:user.email})); } catch {}
-    window.dispatchEvent(new CustomEvent("duitku:authenticated",{detail:user}));
+ function showWelcome() {
+  const modal = $("welcomeModal");
+  if (!modal) return;
+
+  // Jangan tampilkan lagi selama sesi login yang sama.
+  if (sessionStorage.getItem("duitku-welcome-shown") === "yes") {
+    return;
   }
+
+  sessionStorage.setItem("duitku-welcome-shown", "yes");
+  modal.hidden = false;
+}
+
+function closeWelcome() {
+  const modal = $("welcomeModal");
+  if (modal) modal.hidden = true;
+}
+
+function showApp(user) {
+  $("authScreen").hidden = true;
+  $("app").style.display = "flex";
+
+  $("profileName").textContent = user.name;
+  $("profileEmail").textContent = user.email;
+  $("profileInitials").textContent = initials(user.name);
+
+  document.querySelector(".preview").textContent = "● Pratinjau desain";
+
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ email: user.email }));
+  } catch {}
+
+  window.dispatchEvent(
+    new CustomEvent("duitku:authenticated", { detail: user })
+  );
+
+  showWelcome();
+}
   function showLogin(){
     $("app").style.display="none"; $("authScreen").hidden=false; tab("login");
     try { localStorage.removeItem(SESSION_KEY); } catch {}
@@ -61,6 +91,21 @@
       }catch(err){message(err.message||"Gagal masuk.",true);}
     });
     $("forgotPassword").addEventListener("click",()=>message("Fitur reset kata sandi akan tersedia setelah Firebase Auth dihubungkan."));
+    // Tombol dan interaksi pop-up Welcome
+$("closeWelcome").addEventListener("click", closeWelcome);
+$("startUsingDuitku").addEventListener("click", closeWelcome);
+
+$("welcomeModal").addEventListener("click", e => {
+  if (e.target === $("welcomeModal")) {
+    closeWelcome();
+  }
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("welcomeModal").hidden) {
+    closeWelcome();
+  }
+});
     function requestLogout() {
   $("logoutConfirmModal").hidden = false;
 }
@@ -71,6 +116,10 @@ function closeLogoutConfirm() {
 
 function logout() {
   closeLogoutConfirm();
+  closeWelcome();
+
+  // Izinkan Welcome muncul lagi setelah login berikutnya.
+  sessionStorage.removeItem("duitku-welcome-shown");
 
   showLogin();
 
@@ -78,7 +127,6 @@ function logout() {
   $("registerPassword").value = "";
   $("registerConfirm").value = "";
 }
-
 $("logoutButton").addEventListener("click", requestLogout);
 $("logoutButtonMobile").addEventListener("click", requestLogout);
 
