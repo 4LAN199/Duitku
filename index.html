@@ -56,6 +56,7 @@
   <a href="#savings" data-nav="savings">▣　Tabungan</a>
   <a href="#statistics" data-nav="statistics">◔　Statistik</a>
   <a href="#reports" data-nav="reports">▤　Laporan</a>
+  <a href="#feedback" id="openFeedback">✉　Feedback</a>
 </nav>
 <div class="side-bottom"><div class="tip"><b>✦ Keuangan terorganisir</b><small>Semua catatan dalam satu tempat.</small></div><div class="profile"><b id="profileInitials">DU</b><span class="profile-meta"><strong id="profileName">Pengguna Duitku</strong><small id="profileEmail">Mode pratinjau</small></span><button type="button" id="logoutButton" class="logout-button" title="Keluar" aria-label="Keluar">↪</button></div></div>
 </aside>
@@ -516,6 +517,56 @@
     </div>
 
   </div>
+</div>
+  <!-- FORM FEEDBACK -->
+<div class="modal-backdrop" id="feedbackModal" hidden>
+  <form class="modal feedback-modal" id="feedbackForm"
+        aria-labelledby="feedbackTitle">
+
+    <div class="modal-head">
+      <div>
+        <small class="eyebrow">MASUKAN PENGGUNA</small>
+        <h2 id="feedbackTitle">Kirim Feedback</h2>
+      </div>
+      <button type="button" class="icon-button"
+              id="closeFeedback" aria-label="Tutup">×</button>
+    </div>
+
+    <p class="muted">
+      Bantu kami meningkatkan Duitku dengan memberikan saran
+      atau melaporkan masalah yang kamu temukan.
+    </p>
+
+    <label for="feedbackType">Jenis Feedback</label>
+    <select id="feedbackType" required>
+      <option value="Saran">Saran</option>
+      <option value="Laporkan Masalah">Laporkan Masalah</option>
+    </select>
+
+    <label for="feedbackSubject">Judul</label>
+    <input id="feedbackSubject" type="text"
+           maxlength="100" placeholder="Tuliskan judul feedback"
+           required>
+
+    <label for="feedbackMessage">Penjelasan</label>
+    <textarea id="feedbackMessage" rows="5" maxlength="1500"
+              placeholder="Ceritakan saran atau masalah yang kamu temukan..."
+              required></textarea>
+
+    <p class="feedback-notice">
+      Catatan: Feedback ini hanya tersimpan di browser saat ini.
+      Belum dikirim ke pengelola Duitku.
+    </p>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary" id="cancelFeedback">
+        Batal
+      </button>
+      <button type="submit" class="primary">
+        Simpan Feedback
+      </button>
+    </div>
+  </form>
 </div>
   <div class="toast" id="toast" role="status"></div>
 <footer>Duitku　•　Pencatatan Keuangan Pribadi　•　Pratinjau antarmuka</footer>
