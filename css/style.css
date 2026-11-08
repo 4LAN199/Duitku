@@ -757,3 +757,23 @@ main.room-changing .page-section {
   color: #fff;
   border-color: #dc3545;
 }
+
+.welcome-modal {
+  width: min(440px, calc(100% - 32px));
+}
+
+.welcome-description {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 14px 0 22px;
+}
+
+.welcome-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.welcome-actions button {
+  min-width: 110px;
+}
