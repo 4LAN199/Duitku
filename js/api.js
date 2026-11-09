@@ -62,8 +62,7 @@ window.DuitkuAPI = {
       offset,
       hasMore: false
     };
-  }
-};
+  },
 
   async createTransaction(payload) {
     const result = await this.request("createTransaction", payload);
@@ -71,6 +70,11 @@ window.DuitkuAPI = {
   },
 
   async submitTransactionRequest(payload) {
-    const result = await this.request("submitTransactionRequest", payload);
+    const result = await this.request(
+      "submitTransactionRequest",
+      payload
+    );
+
     return result.request;
   }
+};
