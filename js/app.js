@@ -1681,8 +1681,7 @@ $("transactionForm").addEventListener("submit", async e => {
     openModal("income", edit.dataset.edit);
   }
 });
-if(edit)openModal('income',edit.dataset.edit);if(del){const t=transactions.find(x=>x.id===del.dataset.delete);if(t&&confirm(`Hapus transaksi “${t.note}”?`)){transactions=transactions.filter(x=>x.id!==t.id);save();renderAll();toast('Transaksi dihapus.')}}});
-  ['transactionSearch','transactionType'].forEach(id=>$(id).addEventListener('input',renderTransactions));['statsFrom','statsTo'].forEach(id => {
+['transactionSearch','transactionType'].forEach(id=>$(id).addEventListener('input',renderTransactions));['statsFrom','statsTo'].forEach(id => {
   $(id).addEventListener('change', renderStats);
 });
 
