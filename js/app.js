@@ -1589,7 +1589,12 @@ $("transactionForm").addEventListener("submit", async e => {
   const role = activeRoom.role;
 
   if (role === "viewer") {
-    toast("Viewer tidak memiliki izin untuk mengirim transaksi.");
+    toast("Viewer tidak memiliki izin transaksi.");
+    return;
+  }
+
+  if (editingId && !["admin", "developer"].includes(role)) {
+    toast("Hanya Admin dan Developer yang boleh mengedit transaksi.");
     return;
   }
 
@@ -1610,72 +1615,58 @@ $("transactionForm").addEventListener("submit", async e => {
     return;
   }
 
-  const submitButton =
-    $("transactionForm").querySelector('button[type="submit"]');
+  const submitButton = $("transactionForm")
+    .querySelector('button[type="submit"]');
 
   const originalText = submitButton.textContent;
 
   submitButton.disabled = true;
-  submitButton.textContent = "Mengirim...";
+  submitButton.textContent = "Memproses...";
 
   try {
-  const payload = {
-    roomId: activeRoom.roomId,
-    jenis,
-    nominal,
-    kategori,
-    keterangan
-  };
+    const payload = {
+      roomId: activeRoom.roomId,
+      jenis,
+      nominal,
+      kategori,
+      keterangan
+    };
 
-  if (editingId) {
-    if (!["admin", "developer"].includes(role)) {
-      throw new Error(
-        "Hanya Admin dan Developer yang boleh mengedit transaksi."
-      );
+    if (editingId) {
+      await DuitkuAPI.updateTransaction({
+        ...payload,
+        transactionId: editingId
+      });
+
+      closeModal();
+      toast("Transaksi berhasil diperbarui.");
+
+    } else if (role === "editor") {
+      const request = await DuitkuAPI.submitTransactionRequest(payload);
+
+      closeModal();
+      toast(`Pengajuan berhasil dikirim. ID: ${request.requestId}`);
+
+    } else if (role === "admin" || role === "developer") {
+      payload.requestId =
+        typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+      await DuitkuAPI.createTransaction(payload);
+
+      closeModal();
+      toast("Transaksi berhasil disimpan.");
+
+    } else {
+      throw new Error("Role akun tidak memiliki izin transaksi.");
     }
 
-    await DuitkuAPI.updateTransaction({
-      ...payload,
-      transactionId: editingId
-    });
+    await loadRoomData(activeRoom.roomId);
 
-    closeModal();
-    toast("Transaksi berhasil diperbarui.");
-
-  } else if (role === "editor") {
-    const request = await DuitkuAPI.submitTransactionRequest(
-      payload
-    );
-
-    closeModal();
-
-    toast(
-      `Pengajuan berhasil dikirim. ID: ${request.requestId}`
-    );
-
-  } else if (
-    role === "admin" ||
-    role === "developer"
-  ) {
-    payload.requestId =
-      typeof crypto.randomUUID === "function"
-        ? crypto.randomUUID()
-        : `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-
-    await DuitkuAPI.createTransaction(payload);
-
-    closeModal();
-    toast("Transaksi berhasil disimpan.");
-
-  } else {
-    throw new Error("Role akun tidak memiliki izin transaksi.");
-  }
-
-  await loadRoomData(activeRoom.roomId);
-
-} catch (error) {
-  console.error("Gagal mengirim transaksi:", error);
-  toast(error.message || "Transaksi gagal dikirim.");
+  } catch (error) {
+    console.error("Gagal mengirim transaksi:", error);
+    toast(error.message || "Transaksi gagal dikirim.");
 
   } finally {
     submitButton.disabled = false;
