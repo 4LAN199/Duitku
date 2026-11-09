@@ -53,6 +53,7 @@ let activeSpace = null;
 let editingId = null;
 let transactions = [];
 let pendingRequests = [];
+let requestHistory = [];
 let roomSummary = null;
 let roomLoading = false;
 
@@ -249,7 +250,119 @@ document.addEventListener('keydown', e => {
 });
   
   function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>el.classList.remove('show'),2600)}
-  
+  async function loadRequestHistory(roomId) {
+  const rows = $("requestHistoryRows");
+  const empty = $("requestHistoryEmpty");
+
+  rows.innerHTML = `
+    <tr>
+      <td colspan="9">Memuat riwayat pengajuan...</td>
+    </tr>
+  `;
+
+  empty.hidden = true;
+
+  try {
+    const history = await DuitkuAPI.listRequestHistory(roomId);
+
+    if (activeSpace !== roomId) return;
+
+    requestHistory = history;
+    renderRequestHistory();
+
+  } catch (error) {
+    console.error("Gagal memuat riwayat pengajuan:", error);
+
+    if (activeSpace !== roomId) return;
+
+    requestHistory = [];
+
+    rows.innerHTML = `
+      <tr>
+        <td colspan="9">Gagal memuat riwayat pengajuan.</td>
+      </tr>
+    `;
+
+    toast("Gagal memuat riwayat: " + error.message);
+  }
+}
+
+function renderRequestHistory() {
+  const rows = $("requestHistoryRows");
+  const search = $("requestHistorySearch").value
+    .trim()
+    .toLowerCase();
+
+  const status = $("requestHistoryStatus").value;
+
+  const filtered = requestHistory.filter(item => {
+    const matchesSearch = [
+      item.pemohonNama,
+      item.keterangan,
+      item.nominal,
+      item.diputuskanOlehNama
+    ].join(" ").toLowerCase().includes(search);
+
+    const matchesStatus =
+      status === "all" || item.status === status;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  rows.innerHTML = filtered.map(item => {
+    const type = item.jenis === "pemasukan"
+      ? "income"
+      : "expense";
+
+    const statusLabel = item.status === "disetujui"
+      ? "Disetujui"
+      : "Ditolak";
+
+    const statusClass = item.status === "disetujui"
+      ? "income"
+      : "expense";
+
+    return `
+      <tr>
+        <td>
+          ${esc(item.tanggalPengajuan)}
+          <br>
+          <small>${esc(item.waktuPengajuan)}</small>
+        </td>
+
+        <td>${esc(item.pemohonNama || "-")}</td>
+
+        <td>${esc(item.keterangan || "-")}</td>
+
+        <td>
+          <span class="pill ${type}">
+            ${item.jenis === "pemasukan"
+              ? "Pemasukan"
+              : "Pengeluaran"}
+          </span>
+        </td>
+
+        <td class="amount ${type}">
+          ${money(item.nominal)}
+        </td>
+
+        <td>
+          <span class="pill ${statusClass}">
+            ${statusLabel}
+          </span>
+        </td>
+
+        <td>${esc(item.diputuskanOlehNama || "-")}</td>
+
+        <td>${esc(item.tanggalKeputusan || "-")}</td>
+
+        <td>${esc(item.alasanPenolakan || "-")}</td>
+      </tr>
+    `;
+  }).join("");
+
+  $("requestHistoryEmpty").hidden = filtered.length > 0;
+}
 function setSpace(roomId) {
   const room = availableRooms.find(
     item => item.roomId === roomId
@@ -297,6 +410,7 @@ renderAll();
 
 loadRoomData(room.roomId);
 loadPendingRequests(room.roomId);
+loadRequestHistory(room.roomId);
 async function loadPendingRequests(roomId) {
   const panel = $("requestPanel");
 
@@ -585,6 +699,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('.space-wrap')){menu.
   const valid = [
   'dashboard',
   'transactions',
+  'request-history',
   'savings',
   'statistics',
   'reports'
@@ -1645,5 +1760,14 @@ $("requestPanel").addEventListener("click", async e => {
     button.disabled = false;
     button.textContent = originalText;
   }
+});
+  $("refreshRequestHistory").addEventListener("click", () => {
+  if (activeSpace) {
+    loadRequestHistory(activeSpace);
+  }
+});
+
+["requestHistorySearch", "requestHistoryStatus"].forEach(id => {
+  $(id).addEventListener("input", renderRequestHistory);
 });
 }); // Penutup DOMContentLoaded
