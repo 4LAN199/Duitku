@@ -38,5 +38,29 @@ window.DuitkuAPI = {
   async listRooms() {
     const result = await this.request("listRooms");
     return result.rooms || [];
+  },
+
+  async getSummary(roomId) {
+    const result = await this.request("getSummary", {
+      roomId
+    });
+
+    return result.summary;
+  },
+
+  async listTransactions(roomId, limit = 100, offset = 0) {
+    const result = await this.request("listTransactions", {
+      roomId,
+      limit,
+      offset
+    });
+
+    return result.result || {
+      transactions: [],
+      total: 0,
+      limit,
+      offset,
+      hasMore: false
+    };
   }
 };
