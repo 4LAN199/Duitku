@@ -890,3 +890,16 @@ main.room-changing .page-section {
   opacity: 0.5;
   cursor: wait;
 }
+.request-history-panel {
+  width: 100%;
+}
+
+.request-history-panel .table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.request-history-panel table {
+  min-width: 1100px;
+}
