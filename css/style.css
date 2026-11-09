@@ -866,3 +866,27 @@ main.room-changing .page-section {
   right: 0 !important;
   z-index: 9999 !important;
 }
+/* Panel pengajuan transaksi */
+.request-panel {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.request-panel .table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.request-panel table {
+  min-width: 760px;
+}
+
+.request-panel .panel-head {
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.request-panel .table-action:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
