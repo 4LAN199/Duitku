@@ -1308,7 +1308,41 @@ function renderDashboard() {
     roomLoading || transactions.length > 0;
 }
 
-  function rowHTML(t,actions=true){return `<div class="transaction-item"><span class="tx-icon ${t.type}">${t.type==='income'?'↙':'↗'}</span><span class="tx-info"><b>${esc(t.note)}</b><small>${esc(t.category)} · ${formatDate(t.date)}</small></span><strong class="amount ${t.type}">${t.type==='income'?'+':'−'} ${money(t.amount)}</strong>${actions?`<span class="tx-actions"><button data-edit="${t.id}" title="Edit">✎</button><button data-delete="${t.id}" title="Hapus">×</button></span>`:''}</div>`}
+  function rowHTML(t, actions = true) {
+  const canEdit = ["admin", "developer"].includes(
+    activeRoom?.role
+  );
+
+  return `
+    <div class="transaction-item">
+      <span class="tx-icon ${t.type}">
+        ${t.type === "income" ? "↙" : "↗"}
+      </span>
+
+      <span class="tx-info">
+        <b>${esc(t.note)}</b>
+        <small>
+          ${esc(t.category)} · ${formatDate(t.date)}
+        </small>
+      </span>
+
+      <strong class="amount ${t.type}">
+        ${t.type === "income" ? "+" : "−"} ${money(t.amount)}
+      </strong>
+
+      ${actions && canEdit ? `
+        <span class="tx-actions">
+          <button
+            type="button"
+            data-edit="${esc(t.id)}"
+            title="Edit transaksi"
+          >✎</button>
+        </span>
+      ` : ""}
+    </div>
+  `;
+}
+  {return `<div class="transaction-item"><span class="tx-icon ${t.type}">${t.type==='income'?'↙':'↗'}</span><span class="tx-info"><b>${esc(t.note)}</b><small>${esc(t.category)} · ${formatDate(t.date)}</small></span><strong class="amount ${t.type}">${t.type==='income'?'+':'−'} ${money(t.amount)}</strong>${actions?`<span class="tx-actions"><button data-edit="${t.id}" title="Edit">✎</button><button data-delete="${t.id}" title="Hapus">×</button></span>`:''}</div>`}
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function formatDate(d) {
   return d
@@ -1477,7 +1511,7 @@ function renderTransactions() {
   $('reportEmpty').hidden = transactions.length > 0;
 }
 
-function openModal(type = "income") {
+function openModal(type = "income", transactionId = null) {
   if (!activeRoom) {
     toast("Pilih ruang terlebih dahulu.");
     return;
@@ -1488,15 +1522,55 @@ function openModal(type = "income") {
     return;
   }
 
-  editingId = null;
+  const isEditing = Boolean(transactionId);
+
+  if (
+    isEditing &&
+    !["admin", "developer"].includes(activeRoom.role)
+  ) {
+    toast("Hanya Admin dan Developer yang boleh mengedit transaksi.");
+    return;
+  }
+
+  const transaction = isEditing
+    ? transactions.find(item => item.id === transactionId)
+    : null;
+
+  if (isEditing && !transaction) {
+    toast("Transaksi tidak ditemukan.");
+    return;
+  }
+
+  editingId = transactionId;
   $("transactionForm").reset();
 
-  $("formType").value = type;
-  $("formDate").value = today();
-  $("modalTitle").textContent =
-    activeRoom.role === "editor"
-      ? "Ajukan transaksi"
-      : "Tambah transaksi";
+  if (isEditing) {
+    $("formType").value =
+      transaction.type === "income" ? "income" : "expense";
+
+    $("formAmount").value = transaction.amount;
+    $("formNote").value = transaction.note;
+    $("formCategory").value = transaction.category;
+    $("formDate").value = transaction.date;
+
+    $("modalTitle").textContent = "Edit transaksi";
+    $("transactionForm").querySelector(
+      'button[type="submit"]'
+    ).textContent = "Simpan perubahan";
+
+  } else {
+    $("formType").value = type;
+    $("formDate").value = today();
+
+    $("modalTitle").textContent =
+      activeRoom.role === "editor"
+        ? "Ajukan transaksi"
+        : "Tambah transaksi";
+
+    $("transactionForm").querySelector(
+      'button[type="submit"]'
+    ).textContent = "Simpan transaksi";
+  }
 
   $("transactionModal").hidden = false;
 }
@@ -1545,49 +1619,63 @@ $("transactionForm").addEventListener("submit", async e => {
   submitButton.textContent = "Mengirim...";
 
   try {
-    const payload = {
-      roomId: activeRoom.roomId,
-      jenis,
-      nominal,
-      kategori,
-      keterangan
-    };
+  const payload = {
+    roomId: activeRoom.roomId,
+    jenis,
+    nominal,
+    kategori,
+    keterangan
+  };
 
-    if (role === "editor") {
-      const request = await DuitkuAPI.submitTransactionRequest(
-        payload
+  if (editingId) {
+    if (!["admin", "developer"].includes(role)) {
+      throw new Error(
+        "Hanya Admin dan Developer yang boleh mengedit transaksi."
       );
-
-      closeModal();
-
-      toast(
-        `Pengajuan berhasil dikirim. ID: ${request.requestId}`
-      );
-
-    } else if (
-      role === "admin" ||
-      role === "developer"
-    ) {
-      payload.requestId =
-        typeof crypto.randomUUID === "function"
-          ? crypto.randomUUID()
-          : `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-
-      await DuitkuAPI.createTransaction(payload);
-
-      closeModal();
-
-      toast("Transaksi berhasil disimpan.");
-
-    } else {
-      throw new Error("Role akun tidak memiliki izin transaksi.");
     }
 
-    await loadRoomData(activeRoom.roomId);
+    await DuitkuAPI.updateTransaction({
+      ...payload,
+      transactionId: editingId
+    });
 
-  } catch (error) {
-    console.error("Gagal mengirim transaksi:", error);
-    toast(error.message || "Transaksi gagal dikirim.");
+    closeModal();
+    toast("Transaksi berhasil diperbarui.");
+
+  } else if (role === "editor") {
+    const request = await DuitkuAPI.submitTransactionRequest(
+      payload
+    );
+
+    closeModal();
+
+    toast(
+      `Pengajuan berhasil dikirim. ID: ${request.requestId}`
+    );
+
+  } else if (
+    role === "admin" ||
+    role === "developer"
+  ) {
+    payload.requestId =
+      typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+    await DuitkuAPI.createTransaction(payload);
+
+    closeModal();
+    toast("Transaksi berhasil disimpan.");
+
+  } else {
+    throw new Error("Role akun tidak memiliki izin transaksi.");
+  }
+
+  await loadRoomData(activeRoom.roomId);
+
+} catch (error) {
+  console.error("Gagal mengirim transaksi:", error);
+  toast(error.message || "Transaksi gagal dikirim.");
 
   } finally {
     submitButton.disabled = false;
@@ -1596,7 +1684,14 @@ $("transactionForm").addEventListener("submit", async e => {
 });
 
   
-  document.addEventListener('click',e=>{const edit=e.target.closest('[data-edit]'),del=e.target.closest('[data-delete]');if(edit)openModal('income',edit.dataset.edit);if(del){const t=transactions.find(x=>x.id===del.dataset.delete);if(t&&confirm(`Hapus transaksi “${t.note}”?`)){transactions=transactions.filter(x=>x.id!==t.id);save();renderAll();toast('Transaksi dihapus.')}}});
+  document.addEventListener("click", e => {
+  const edit = e.target.closest("[data-edit]");
+
+  if (edit) {
+    openModal("income", edit.dataset.edit);
+  }
+});
+if(edit)openModal('income',edit.dataset.edit);if(del){const t=transactions.find(x=>x.id===del.dataset.delete);if(t&&confirm(`Hapus transaksi “${t.note}”?`)){transactions=transactions.filter(x=>x.id!==t.id);save();renderAll();toast('Transaksi dihapus.')}}});
   ['transactionSearch','transactionType'].forEach(id=>$(id).addEventListener('input',renderTransactions));['statsFrom','statsTo'].forEach(id => {
   $(id).addEventListener('change', renderStats);
 });
