@@ -52,7 +52,7 @@ let activeRoom = null;
 let activeSpace = null;
 let editingId = null;
 let transactions = [];
-
+let pendingRequests = [];
 let roomSummary = null;
 let roomLoading = false;
 
@@ -296,7 +296,116 @@ loadSavings();
 renderAll();
 
 loadRoomData(room.roomId);
+loadPendingRequests(room.roomId);
+async function loadPendingRequests(roomId) {
+  const panel = $("requestPanel");
 
+  const room = availableRooms.find(
+    item => item.roomId === roomId
+  );
+
+  const canApprove = room &&
+    ["admin", "developer"].includes(room.role);
+
+  panel.hidden = !canApprove;
+
+  if (!canApprove) {
+    pendingRequests = [];
+    return;
+  }
+
+  $("requestRows").innerHTML = `
+    <tr>
+      <td colspan="7">Memuat pengajuan...</td>
+    </tr>
+  `;
+  $("requestEmpty").hidden = true;
+
+  try {
+    const requests =
+      await DuitkuAPI.listTransactionRequests(roomId);
+
+    if (activeSpace !== roomId) return;
+
+    pendingRequests = requests;
+    renderPendingRequests();
+
+  } catch (error) {
+    console.error("Gagal memuat pengajuan:", error);
+
+    if (activeSpace !== roomId) return;
+
+    pendingRequests = [];
+    $("requestRows").innerHTML = `
+      <tr>
+        <td colspan="7">Gagal memuat pengajuan.</td>
+      </tr>
+    `;
+
+    toast("Gagal memuat pengajuan: " + error.message);
+  }
+}
+
+function renderPendingRequests() {
+  const rows = $("requestRows");
+
+  rows.innerHTML = pendingRequests.map(request => {
+    const date = request.createdAt
+      ? new Date(request.createdAt)
+      : null;
+
+    const formattedDate = date && !Number.isNaN(date.getTime())
+      ? new Intl.DateTimeFormat("id-ID", {
+          dateStyle: "medium",
+          timeStyle: "short",
+          timeZone: "Asia/Jakarta"
+        }).format(date)
+      : "-";
+
+    const type = request.jenis === "pemasukan"
+      ? "income"
+      : "expense";
+
+    return `
+      <tr>
+        <td>${esc(formattedDate)}</td>
+        <td>${esc(request.pemohonNama || "Pengguna")}</td>
+        <td>${esc(request.keterangan || "-")}</td>
+        <td>${esc(request.kategori || "-")}</td>
+        <td>
+          <span class="pill ${type}">
+            ${request.jenis === "pemasukan"
+              ? "Pemasukan"
+              : "Pengeluaran"}
+          </span>
+        </td>
+        <td class="amount ${type}">
+          ${money(request.nominal)}
+        </td>
+        <td>
+          <button
+            type="button"
+            class="table-action"
+            data-request-action="approve"
+            data-request-id="${esc(request.requestId)}"
+          >
+            Setujui
+          </button>
+          <button
+            type="button"
+            class="table-action danger"
+            data-request-action="reject"
+            data-request-id="${esc(request.requestId)}"
+          >
+            Tolak
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  $("requestEmpty").hidden = pendingRequests.length > 0;
+}
   const main = document.querySelector("main");
   main.classList.remove("room-changing");
   void main.offsetWidth;
@@ -1428,5 +1537,113 @@ $('statsReset').addEventListener('click', () => {
   doc.save(`Duitku-Laporan-${activeSpace}-${today()}.pdf`);
 
   toast('PDF berhasil dibuat dan diunduh.');
+});
+  $("refreshRequests").addEventListener("click", () => {
+  if (activeSpace) {
+    loadPendingRequests(activeSpace);
+  }
+});
+
+$("requestPanel").addEventListener("click", async e => {
+  const button = e.target.closest("[data-request-action]");
+
+  if (!button || !activeRoom) return;
+
+  const action = button.dataset.requestAction;
+  const requestId = button.dataset.requestId;
+  const roomId = activeRoom.roomId;
+
+  const request = pendingRequests.find(
+    item => item.requestId === requestId
+  );
+
+  if (!request) {
+    toast("Pengajuan tidak ditemukan atau sudah diproses.");
+    return;
+  }
+
+  let alasanPenolakan = "";
+
+  if (action === "approve") {
+    const confirmed = confirm(
+      `Setujui pengajuan ${request.jenis} sebesar ${money(request.nominal)} dari ${request.pemohonNama || "Editor"}?`
+    );
+
+    if (!confirmed) return;
+
+  } else if (action === "reject") {
+    const reason = prompt(
+      "Masukkan alasan penolakan pengajuan:"
+    );
+
+    if (reason === null) return;
+
+    alasanPenolakan = reason.trim();
+
+    if (!alasanPenolakan) {
+      toast("Alasan penolakan wajib diisi.");
+      return;
+    }
+
+    if (alasanPenolakan.length > 500) {
+      toast("Alasan penolakan maksimal 500 karakter.");
+      return;
+    }
+  } else {
+    return;
+  }
+
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Memproses...";
+
+  try {
+    let result;
+
+    if (action === "approve") {
+      result = await DuitkuAPI.approveTransactionRequest(
+        roomId,
+        requestId
+      );
+    } else {
+      result = await DuitkuAPI.rejectTransactionRequest(
+        roomId,
+        requestId,
+        alasanPenolakan
+      );
+    }
+
+    pendingRequests = pendingRequests.filter(
+      item => item.requestId !== requestId
+    );
+
+    renderPendingRequests();
+
+    toast(
+      result.message ||
+      (action === "approve"
+        ? "Pengajuan berhasil disetujui."
+        : "Pengajuan berhasil ditolak.")
+    );
+
+    // Perbarui saldo dan transaksi setelah keputusan.
+    await loadRoomData(roomId);
+
+    // Sinkronkan daftar pengajuan dari Firestore.
+    await loadPendingRequests(roomId);
+
+  } catch (error) {
+    console.error("Gagal memproses pengajuan:", error);
+
+    toast(
+      error.message || "Keputusan pengajuan gagal diproses."
+    );
+
+    await loadPendingRequests(roomId);
+
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
 });
 }); // Penutup DOMContentLoaded
