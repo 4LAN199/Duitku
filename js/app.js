@@ -295,17 +295,26 @@ document.addEventListener('keydown', e => {
 
 function renderRequestHistory() {
   const rows = $("requestHistoryRows");
-  const search = $("requestHistorySearch").value
-    .trim()
-    .toLowerCase();
-
+  const search = $("requestHistorySearch").value.trim().toLowerCase();
   const status = $("requestHistoryStatus").value;
+
+  const actionLabels = {
+    transaksi: "Transaksi",
+    buat_rencana: "Buat rencana tabungan",
+    edit_rencana: "Edit rencana tabungan",
+    hapus_rencana: "Hapus rencana tabungan",
+    setoran: "Setoran tabungan",
+    penarikan: "Penarikan tabungan"
+  };
 
   const filtered = requestHistory.filter(item => {
     const matchesSearch = [
       item.pemohonNama,
       item.keterangan,
+      item.namaTabungan,
       item.nominal,
+      item.target,
+      item.jenisAksi,
       item.diputuskanOlehNama
     ].join(" ").toLowerCase().includes(search);
 
@@ -316,9 +325,19 @@ function renderRequestHistory() {
   });
 
   rows.innerHTML = filtered.map(item => {
-    const type = item.jenis === "pemasukan"
-      ? "income"
-      : "expense";
+    const action = item.jenisAksi || "transaksi";
+    const actionLabel = actionLabels[action] || action;
+    const isTransaction = action === "transaksi";
+
+    const detail = isTransaction
+      ? (item.keterangan || "-")
+      : (item.namaTabungan || item.keterangan || "-");
+
+    const value = item.nominal != null && item.nominal !== ""
+      ? money(item.nominal)
+      : item.target != null && item.target !== ""
+        ? `Target ${money(item.target)}`
+        : "-";
 
     const statusLabel = item.status === "disetujui"
       ? "Disetujui"
@@ -331,37 +350,21 @@ function renderRequestHistory() {
     return `
       <tr>
         <td>
-          ${esc(item.tanggalPengajuan)}
+          ${esc(item.tanggalPengajuan || "-")}
           <br>
-          <small>${esc(item.waktuPengajuan)}</small>
+          <small>${esc(item.waktuPengajuan || "")}</small>
         </td>
-
         <td>${esc(item.pemohonNama || "-")}</td>
-
-        <td>${esc(item.keterangan || "-")}</td>
-
-        <td>
-          <span class="pill ${type}">
-            ${item.jenis === "pemasukan"
-              ? "Pemasukan"
-              : "Pengeluaran"}
-          </span>
-        </td>
-
-        <td class="amount ${type}">
-          ${money(item.nominal)}
-        </td>
-
+        <td>${esc(actionLabel)}</td>
+        <td>${esc(detail)}</td>
+        <td>${esc(value)}</td>
         <td>
           <span class="pill ${statusClass}">
             ${statusLabel}
           </span>
         </td>
-
         <td>${esc(item.diputuskanOlehNama || "-")}</td>
-
         <td>${esc(item.tanggalKeputusan || "-")}</td>
-
         <td>${esc(item.alasanPenolakan || "-")}</td>
       </tr>
     `;
@@ -371,6 +374,15 @@ function renderRequestHistory() {
 }
   function renderPendingRequests() {
   const rows = $("requestRows");
+
+  const actionLabels = {
+    transaksi: "Transaksi",
+    buat_rencana: "Buat rencana tabungan",
+    edit_rencana: "Edit rencana tabungan",
+    hapus_rencana: "Hapus rencana tabungan",
+    setoran: "Setoran tabungan",
+    penarikan: "Penarikan tabungan"
+  };
 
   rows.innerHTML = pendingRequests.map(request => {
     const date = request.createdAt
@@ -385,26 +397,26 @@ function renderRequestHistory() {
         }).format(date)
       : "-";
 
-    const type = request.jenis === "pemasukan"
-      ? "income"
-      : "expense";
+    const action = request.jenisAksi || "transaksi";
+    const actionLabel = actionLabels[action] || action;
+
+    const detail = action === "transaksi"
+      ? `${request.keterangan || "-"}${request.kategori ? " · " + request.kategori : ""}`
+      : (request.namaTabungan || request.keterangan || "-");
+
+    const value = request.nominal != null && request.nominal !== ""
+      ? money(request.nominal)
+      : request.target != null && request.target !== ""
+        ? `Target ${money(request.target)}`
+        : "-";
 
     return `
       <tr>
         <td>${esc(formattedDate)}</td>
         <td>${esc(request.pemohonNama || "Pengguna")}</td>
-        <td>${esc(request.keterangan || "-")}</td>
-        <td>${esc(request.kategori || "-")}</td>
-        <td>
-          <span class="pill ${type}">
-            ${request.jenis === "pemasukan"
-              ? "Pemasukan"
-              : "Pengeluaran"}
-          </span>
-        </td>
-        <td class="amount ${type}">
-          ${money(request.nominal)}
-        </td>
+        <td>${esc(actionLabel)}</td>
+        <td>${esc(detail)}</td>
+        <td>${esc(value)}</td>
         <td>
           <button
             type="button"
@@ -453,7 +465,7 @@ async function loadPendingRequests(roomId) {
 
   $("requestRows").innerHTML = `
     <tr>
-      <td colspan="7">Memuat pengajuan...</td>
+      <td colspan="6">Memuat pengajuan...</td>
     </tr>
   `;
   $("requestEmpty").hidden = true;
@@ -475,7 +487,7 @@ async function loadPendingRequests(roomId) {
     pendingRequests = [];
     $("requestRows").innerHTML = `
       <tr>
-        <td colspan="7">Gagal memuat pengajuan.</td>
+        <td colspan="6">Gagal memuat pengajuan.</td>
       </tr>
     `;
 
