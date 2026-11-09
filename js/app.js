@@ -8,7 +8,13 @@ const money = n => new Intl.NumberFormat('id-ID', {
   currency: 'IDR',
   maximumFractionDigits: 0
 }).format(n || 0);
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offset)
+    .toISOString()
+    .slice(0, 10);
+};
 window.addEventListener("duitku:authenticated", () => {
   initializeRooms();
 });
@@ -255,6 +261,13 @@ function setSpace(roomId) {
   }
 
   activeRoom = room;
+  const canTransact = room.role !== "viewer";
+
+$("newTransaction").hidden = !canTransact;
+
+document.querySelectorAll("[data-add]").forEach(button => {
+  button.hidden = !canTransact;
+});
   activeSpace = room.roomId;
 
   $("activeSpaceName").textContent = room.name;
