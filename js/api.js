@@ -76,31 +76,32 @@ window.DuitkuAPI = {
     );
 
     return result.request;
+  },
+
+  async listTransactionRequests(roomId) {
+    const result = await this.request("listTransactionRequests", {
+      roomId
+    });
+
+    return result.requests || [];
+  },
+
+  async approveTransactionRequest(roomId, requestId) {
+    const result = await this.request("approveTransactionRequest", {
+      roomId,
+      requestId
+    });
+
+    return result.result;
+  },
+
+  async rejectTransactionRequest(roomId, requestId, alasanPenolakan) {
+    const result = await this.request("rejectTransactionRequest", {
+      roomId,
+      requestId,
+      alasanPenolakan
+    });
+
+    return result.result;
   }
-async listTransactionRequests(roomId) {
-  const result = await this.request("listTransactionRequests", {
-    roomId
-  });
-
-  return result.requests || [];
-},
-
-async approveTransactionRequest(roomId, requestId) {
-  const result = await this.request("approveTransactionRequest", {
-    roomId,
-    requestId
-  });
-
-  return result.result;
-},
-
-async rejectTransactionRequest(roomId, requestId, alasanPenolakan) {
-  const result = await this.request("rejectTransactionRequest", {
-    roomId,
-    requestId,
-    alasanPenolakan
-  });
-
-  return result.result;
-}
 };
