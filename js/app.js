@@ -489,11 +489,12 @@ function setSpace(roomId) {
   activeRoom = room;
   const canTransact = room.role !== "viewer";
 
-$("newTransaction").hidden = !canTransact;
+  $("newTransaction").hidden = !canTransact;
 
-document.querySelectorAll("[data-add]").forEach(button => {
-  button.hidden = !canTransact;
-});
+  document.querySelectorAll("[data-add]").forEach(button => {
+    button.hidden = !canTransact;
+  });
+
   activeSpace = room.roomId;
 
   $("activeSpaceName").textContent = room.name;
@@ -514,16 +515,26 @@ document.querySelectorAll("[data-add]").forEach(button => {
     );
   } catch {}
 
-transactions = [];
-roomSummary = null;
-roomLoading = true;
+  transactions = [];
+  roomSummary = null;
+  roomLoading = true;
 
-loadSavings();
-renderAll();
+  loadSavings();
+  renderAll();
 
-loadRoomData(room.roomId);
-loadPendingRequests(room.roomId);
-loadRequestHistory(room.roomId);
+  loadRoomData(room.roomId);
+  loadPendingRequests(room.roomId);
+  loadRequestHistory(room.roomId);
+
+  const main = document.querySelector("main");
+  main.classList.remove("room-changing");
+  void main.offsetWidth;
+  main.classList.add("room-changing");
+
+  setTimeout(() => {
+    main.classList.remove("room-changing");
+  }, 350);
+}
   
 async function loadRoomData(roomId) {
   try {
