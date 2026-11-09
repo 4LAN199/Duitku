@@ -801,24 +801,14 @@ function renderSavings() {
           <i style="width:${progress}%"></i>
         </div>
         <p>Progress ${progress.toFixed(1)}%</p>
-
-        <div class="savings-card-actions">
-          ${
-            !plan.started
-              ? `<button class="primary" data-savings-action="start" data-id="${plan.id}">Mulai menabung</button>`
-              : `
-                <button class="primary" data-savings-action="deposit" data-id="${plan.id}">Setor</button>
-                <button class="secondary" data-savings-action="withdraw" data-id="${plan.id}">Tarik</button>
-              `
-          }
-          <button class="secondary" data-savings-action="edit" data-id="${plan.id}">Edit</button>
-          <button class="secondary" data-savings-action="delete" data-id="${plan.id}">Hapus</button>
-          ${
-            plan.started && target > 0 && balance >= target
-              ? `<button class="primary" data-savings-action="complete" data-id="${plan.id}">Selesaikan rencana</button>`
-              : ''
-          }
-        </div>
+<div class="savings-card-actions">
+  ${activeRoom?.role !== 'viewer' ? `
+    <button class="primary" data-savings-action="deposit" data-id="${plan.id}">Setor</button>
+    <button class="secondary" data-savings-action="withdraw" data-id="${plan.id}">Tarik</button>
+    <button class="secondary" data-savings-action="edit" data-id="${plan.id}">Edit</button>
+    <button class="secondary" data-savings-action="delete" data-id="${plan.id}">Hapus</button>
+  ` : ''}
+</div>
       </article>
     `;
   }).join('');
@@ -912,15 +902,31 @@ function openSavingsDialog({
     button.addEventListener('click', closeSavingsDialog);
   });
 
-  $('savingsDialogForm').addEventListener('submit', e => {
-    e.preventDefault();
+  $('savingsDialogForm').addEventListener('submit', async e => {
+  e.preventDefault();
 
-    const result = onSubmit(new FormData(e.currentTarget));
+  const form = e.currentTarget;
+  const submitButton = form.querySelector('button[type="submit"]');
+
+  submitButton.disabled = true;
+  submitButton.textContent = 'Memproses...';
+
+  try {
+    const result = await onSubmit(new FormData(form));
 
     if (result !== false) {
       closeSavingsDialog();
     }
-  });
+  } catch (error) {
+    console.error('Gagal memproses tabungan:', error);
+    toast('Gagal: ' + error.message);
+  } finally {
+    if (form.isConnected) {
+      submitButton.disabled = false;
+      submitButton.textContent = 'Simpan';
+    }
+  }
+});
 
   const firstInput = content.querySelector('input, textarea');
   if (firstInput) firstInput.focus();
@@ -938,9 +944,9 @@ function showSavingsConfirmation({
     description,
     confirmText,
     danger,
-    onSubmit: () => {
-      onConfirm();
-    }
+    onSubmit: async () => {
+  await onConfirm();
+}
   });
 }
 
@@ -976,67 +982,128 @@ function addSavingsHistory(plan, activity, amount) {
   });
 }
 
+async function refreshSavings() {
+  if (!activeSpace) return;
+  await loadSavings(activeSpace);
+}
+
+async function sendSavingsAction(payload) {
+  const role = activeRoom?.role;
+
+  if (role === 'viewer') {
+    throw new Error('Akun Viewer hanya dapat melihat tabungan.');
+  }
+
+  if (role === 'editor') {
+    await DuitkuAPI.submitActionRequest({
+      roomId: activeSpace,
+      ...payload
+    });
+
+    toast('Pengajuan berhasil dikirim dan menunggu persetujuan.');
+    await refreshSavings();
+    await loadPendingRequests(activeSpace);
+    return;
+  }
+
+  const roomId = activeSpace;
+
+  switch (payload.jenisAksi) {
+    case 'buat_rencana':
+      await DuitkuAPI.createSavingsPlan({
+        roomId,
+        nama: payload.namaTabungan,
+        target: payload.target,
+        keterangan: payload.keterangan || ''
+      });
+      break;
+
+    case 'edit_rencana':
+      await DuitkuAPI.updateSavingsPlan({
+        roomId,
+        planId: payload.planId,
+        nama: payload.namaTabungan,
+        target: payload.target,
+        keterangan: payload.keterangan || ''
+      });
+      break;
+
+    case 'hapus_rencana':
+      await DuitkuAPI.deleteSavingsPlan(roomId, payload.planId);
+      break;
+
+    case 'setoran':
+      await DuitkuAPI.depositSavings({
+        roomId,
+        planId: payload.planId,
+        nominal: payload.nominal,
+        keterangan: payload.keterangan || ''
+      });
+      break;
+
+    case 'penarikan':
+      await DuitkuAPI.withdrawSavings({
+        roomId,
+        planId: payload.planId,
+        nominal: payload.nominal,
+        keterangan: payload.keterangan || ''
+      });
+      break;
+
+    default:
+      throw new Error('Jenis aktivitas tabungan tidak dikenal.');
+  }
+
+  toast('Perubahan tabungan berhasil disimpan.');
+  await refreshSavings();
+}
+
 function createSavingsPlan() {
+  if (activeRoom?.role === 'viewer') return;
+
   openSavingsDialog({
     title: 'Buat Rencana Tabungan',
-    description: 'Tentukan tujuan dan target dana yang ingin kamu kumpulkan.',
+    description: 'Tentukan tujuan dan target dana yang ingin dikumpulkan.',
     fields: `
       ${savingsField('Nama rencana', 'name', '', 'text', 'Contoh: Beli laptop')}
       ${savingsField('Target tabungan (Rupiah)', 'target', '', 'number', 'Contoh: 5000000')}
 
       <label class="savings-form-field">
         <span>Keterangan (opsional)</span>
-        <textarea name="note" rows="3" placeholder="Ceritakan tujuan tabungan ini"></textarea>
+        <textarea name="note" rows="3"></textarea>
       </label>
     `,
-    confirmText: 'Buat Tabungan',
-    onSubmit: data => {
+    confirmText: activeRoom.role === 'editor'
+      ? 'Ajukan Rencana'
+      : 'Buat Tabungan',
+
+    onSubmit: async data => {
       const name = String(data.get('name') || '').trim();
       const target = Number(data.get('target'));
       const note = String(data.get('note') || '').trim();
 
-      if (!name || !Number.isFinite(target) || target <= 0) {
+      if (!name || !Number.isSafeInteger(target) || target <= 0) {
         toast('Nama dan target tabungan wajib diisi dengan benar.');
         return false;
       }
 
-      savingsPlans.push({
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-        name,
-        note,
+      await sendSavingsAction({
+        jenisAksi: 'buat_rencana',
+        namaTabungan: name,
         target,
-        balance: 0,
-        started: false,
-        createdAt: new Date().toISOString(),
-        createdByName: savingsActor()
+        keterangan: note
       });
-
-      saveSavings();
-      renderAll();
-      toast('Rencana tabungan berhasil dibuat.');
     }
   });
 }
 
 function handleSavingsAction(action, id) {
-  const plan = savingsPlans.find(p => p.id === id);
+  if (activeRoom?.role === 'viewer') return;
+
+  const plan = savingsPlans.find(item => item.id === id);
   if (!plan) return;
 
-  if (action === 'start') {
-    showSavingsConfirmation({
-      title: 'Mulai Menabung?',
-      description: `Rencana "${plan.name}" akan diaktifkan. Setelah dimulai, kamu bisa melakukan setoran dan penarikan.`,
-      confirmText: 'Mulai Menabung',
-      onConfirm: () => {
-        plan.started = true;
-        addSavingsHistory(plan, 'Mulai menabung', 0);
-        saveSavings();
-        renderAll();
-        toast('Rencana tabungan dimulai.');
-      }
-    });
-    return;
-  }
+  const isEditor = activeRoom.role === 'editor';
 
   if (action === 'edit') {
     openSavingsDialog({
@@ -1051,15 +1118,16 @@ function handleSavingsAction(action, id) {
           <textarea name="note" rows="3">${esc(plan.note || '')}</textarea>
         </label>
       `,
-      confirmText: 'Simpan Perubahan',
-      onSubmit: data => {
+      confirmText: isEditor ? 'Ajukan Perubahan' : 'Simpan Perubahan',
+
+      onSubmit: async data => {
         const name = String(data.get('name') || '').trim();
         const target = Number(data.get('target'));
         const note = String(data.get('note') || '').trim();
 
         if (
           !name ||
-          !Number.isFinite(target) ||
+          !Number.isSafeInteger(target) ||
           target <= 0 ||
           target < Number(plan.balance || 0)
         ) {
@@ -1067,160 +1135,75 @@ function handleSavingsAction(action, id) {
           return false;
         }
 
-        plan.name = name;
-        plan.target = target;
-        plan.note = note;
-
-        saveSavings();
-        renderAll();
-        toast('Rencana berhasil diperbarui.');
+        await sendSavingsAction({
+          jenisAksi: 'edit_rencana',
+          planId: plan.id,
+          namaTabungan: name,
+          target,
+          keterangan: note
+        });
       }
     });
     return;
   }
 
   if (action === 'deposit' || action === 'withdraw') {
-    if (!plan.started) {
-      toast('Mulai rencana terlebih dahulu.');
-      return;
-    }
-
     const isDeposit = action === 'deposit';
 
     openSavingsDialog({
       title: isDeposit ? 'Setor Tabungan' : 'Tarik Tabungan',
       description: `${plan.name} · Saldo saat ini ${money(plan.balance)}.`,
-      fields: savingsField(
-        'Nominal Rupiah',
-        'amount',
-        '',
-        'number',
-        'Masukkan nominal'
-      ),
-      confirmText: isDeposit ? 'Setor Sekarang' : 'Tarik Sekarang',
-      onSubmit: data => {
-        const amount = Number(data.get('amount'));
+      fields: `
+        ${savingsField('Nominal Rupiah', 'amount', '', 'number', 'Masukkan nominal')}
+        <label class="savings-form-field">
+          <span>Keterangan (opsional)</span>
+          <textarea name="note" rows="2"></textarea>
+        </label>
+      `,
+      confirmText: isEditor
+        ? 'Kirim Pengajuan'
+        : (isDeposit ? 'Setor Sekarang' : 'Tarik Sekarang'),
 
-        if (!Number.isFinite(amount) || amount <= 0) {
-          toast('Nominal harus lebih dari nol.');
+      onSubmit: async data => {
+        const amount = Number(data.get('amount'));
+        const note = String(data.get('note') || '').trim();
+
+        if (!Number.isSafeInteger(amount) || amount <= 0) {
+          toast('Nominal harus berupa bilangan bulat lebih dari nol.');
           return false;
         }
 
-        if (isDeposit) {
-          const s = sums(transactions);
-          const available = s.income - s.expense - totalSavings();
-
-          if (amount > available) {
-            toast(`Saldo utama tidak cukup. Saldo tersedia ${money(available)}.`);
-            return false;
-          }
-
-          plan.balance = Number(plan.balance || 0) + amount;
-          addSavingsHistory(plan, 'Setoran', amount);
-        } else {
-          if (amount > Number(plan.balance || 0)) {
-            toast('Saldo tabungan tidak mencukupi.');
-            return false;
-          }
-
-          plan.balance = Number(plan.balance || 0) - amount;
-          addSavingsHistory(plan, 'Penarikan ke saldo utama', amount);
+        if (!isDeposit && amount > Number(plan.balance || 0)) {
+          toast('Saldo tabungan tidak mencukupi.');
+          return false;
         }
 
-        saveSavings();
-        renderAll();
-        toast(isDeposit ? 'Setoran berhasil.' : 'Penarikan berhasil.');
+        await sendSavingsAction({
+          jenisAksi: isDeposit ? 'setoran' : 'penarikan',
+          planId: plan.id,
+          namaTabungan: plan.name,
+          nominal: amount,
+          keterangan: note
+        });
       }
     });
     return;
   }
 
   if (action === 'delete') {
-    const balance = Number(plan.balance || 0);
-
     showSavingsConfirmation({
       title: 'Hapus Rencana?',
-      description: balance > 0
-        ? `Rencana "${plan.name}" memiliki saldo ${money(balance)}. Jika dihapus, seluruh saldo tersebut akan dikembalikan ke saldo utama.`
-        : `Rencana "${plan.name}" akan dihapus. Tindakan ini tidak bisa dibatalkan.`,
-      confirmText: 'Ya, Hapus',
+      description: `Rencana "${plan.name}" akan diajukan untuk dihapus. Saldo saat ini: ${money(plan.balance)}.`,
+      confirmText: isEditor ? 'Ajukan Penghapusan' : 'Ya, Hapus',
       danger: true,
-      onConfirm: () => {
-        if (balance > 0) {
-          addSavingsHistory(
-            plan,
-            'Hapus paksa – saldo dikembalikan ke saldo utama',
-            balance
-          );
-        }
 
-        savingsPlans = savingsPlans.filter(p => p.id !== id);
-        saveSavings();
-        renderAll();
-
-        toast(balance > 0
-          ? 'Rencana dihapus dan saldo dikembalikan ke saldo utama.'
-          : 'Rencana berhasil dihapus.');
-      }
-    });
-    return;
-  }
-
-  if (action === 'complete') {
-    const balance = Number(plan.balance || 0);
-    const target = Number(plan.target || 0);
-
-    if (!plan.started || target <= 0 || balance < target) {
-      toast('Saldo tabungan belum mencapai target.');
-      return;
-    }
-
-    const remainder = balance - target;
-
-    showSavingsConfirmation({
-      title: 'Selesaikan Rencana?',
-      description:
-        `Rencana: ${plan.name}\n` +
-        `Dana yang digunakan: ${money(target)}\n` +
-        `Sisa dikembalikan ke saldo utama: ${money(remainder)}\n\n` +
-        'Dana yang digunakan akan dicatat sebagai transaksi pengeluaran.',
-      confirmText: 'Selesaikan',
-      onConfirm: () => {
-        const now = new Date().toISOString();
-        const actor = savingsActor();
-
-        transactions.push({
-          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-          type: 'expense',
-          amount: target,
-          note: `Beli pakai tabungan – ${plan.name}`,
-          category: 'Tabungan',
-          date: today(),
-          createdAt: now,
-          createdByName: actor
+      onConfirm: async () => {
+        await sendSavingsAction({
+          jenisAksi: 'hapus_rencana',
+          planId: plan.id,
+          namaTabungan: plan.name,
+          keterangan: 'Penghapusan rencana tabungan'
         });
-
-        completedSavings.unshift({
-          id: plan.id,
-          name: plan.name,
-          target,
-          amountUsed: target,
-          remainderReturned: remainder,
-          finalBalance: balance,
-          completedAt: today(),
-          createdAt: now,
-          completedByName: actor
-        });
-
-        addSavingsHistory(plan, 'Rencana selesai – dana digunakan', target);
-
-        savingsPlans = savingsPlans.filter(p => p.id !== id);
-
-        save();
-        saveSavings();
-        renderAll();
-
-        toast('Rencana selesai. Transaksi pengeluaran sudah dicatat.');
       }
     });
   }
