@@ -64,3 +64,13 @@ window.DuitkuAPI = {
     };
   }
 };
+
+  async createTransaction(payload) {
+    const result = await this.request("createTransaction", payload);
+    return result.result;
+  },
+
+  async submitTransactionRequest(payload) {
+    const result = await this.request("submitTransactionRequest", payload);
+    return result.request;
+  }
