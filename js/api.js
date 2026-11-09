@@ -3,6 +3,7 @@ const DUITKU_API_URL =
   "https://script.google.com/macros/s/AKfycbxXrCBh3zTpdEOtW4jKFTgcADm-gJ2JACndINDAYlptFAgNfZ9JLOUXK6cmMEgE87af/exec";
 
 window.DuitkuAPI = {
+  
   async request(action, payload = {}) {
     if (typeof window.duitkuGetIdToken !== "function") {
       throw new Error("Firebase belum siap.");
@@ -111,4 +112,38 @@ window.DuitkuAPI = {
 
     return result.result;
   }
+  
+  // PENGAJUAN TERPADU
+  async submitActionRequest(payload) {
+    return await this.request("submitActionRequest", payload);
+  },
+
+  // DATA TABUNGAN DARI GOOGLE SHEETS
+  async listSavingsPlans(roomId) {
+    return await this.request("listSavingsPlans", { roomId });
+  },
+
+  async createSavingsPlan(payload) {
+    return await this.request("createSavingsPlan", payload);
+  },
+
+  async updateSavingsPlan(payload) {
+    return await this.request("updateSavingsPlan", payload);
+  },
+
+  async deleteSavingsPlan(roomId, planId) {
+    return await this.request("deleteSavingsPlan", {
+      roomId,
+      planId
+    });
+  },
+
+  async depositSavings(payload) {
+    return await this.request("depositSavings", payload);
+  },
+
+  async withdrawSavings(payload) {
+    return await this.request("withdrawSavings", payload);
+  }
+
 };
