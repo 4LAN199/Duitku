@@ -111,7 +111,7 @@ window.DuitkuAPI = {
     });
 
     return result.result;
-  }
+  },
   
   // PENGAJUAN TERPADU
   async submitActionRequest(payload) {
