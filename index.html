@@ -177,6 +177,45 @@
     </div>
     <button class="primary" id="newTransaction">＋ Tambah transaksi</button>
   </div>
+  <!-- PENGAJUAN TRANSAKSI -->
+<article class="panel request-panel" id="requestPanel" hidden>
+  <div class="panel-head">
+    <div>
+      <h3>Pengajuan Transaksi</h3>
+      <p>Periksa dan putuskan pengajuan dari Editor.</p>
+    </div>
+    <button
+      type="button"
+      class="secondary"
+      id="refreshRequests"
+    >
+      ↻ Muat ulang
+    </button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Tanggal</th>
+          <th>Pengaju</th>
+          <th>Keterangan</th>
+          <th>Kategori</th>
+          <th>Jenis</th>
+          <th>Nominal</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="requestRows"></tbody>
+    </table>
+  </div>
+
+  <div class="empty compact" id="requestEmpty" hidden>
+    <b>✓</b>
+    <strong>Tidak ada pengajuan tertunda</strong>
+    <p>Pengajuan baru dari Editor akan muncul di sini.</p>
+  </div>
+</article>
 
   <article class="panel transaction-panel">
     <div class="toolbar">
