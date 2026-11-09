@@ -1216,67 +1216,126 @@ function renderTransactions() {
 
   $('reportEmpty').hidden = transactions.length > 0;
 }
-function openModal() {
-  toast(
-    "Fitur pencatatan transaksi sedang dalam tahap integrasi."
-  );
+
+function openModal(type = "income") {
+  if (!activeRoom) {
+    toast("Pilih ruang terlebih dahulu.");
+    return;
+  }
+
+  if (activeRoom.role === "viewer") {
+    toast("Akun Viewer hanya dapat melihat transaksi.");
+    return;
+  }
+
+  editingId = null;
+  $("transactionForm").reset();
+
+  $("formType").value = type;
+  $("formDate").value = today();
+  $("modalTitle").textContent =
+    activeRoom.role === "editor"
+      ? "Ajukan transaksi"
+      : "Tambah transaksi";
+
+  $("transactionModal").hidden = false;
 }
+
   function closeModal(){$('transactionModal').hidden=true;editingId=null;$('transactionForm').reset()}
   $('newTransaction').addEventListener('click',()=>openModal());document.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()=>openModal(b.dataset.add)));$('closeModal').addEventListener('click',closeModal);$('cancelModal').addEventListener('click',closeModal);$('transactionModal').addEventListener('click',e=>{if(e.target===$('transactionModal'))closeModal()});
-  $('transactionForm').addEventListener('submit', e => {
+  
+$("transactionForm").addEventListener("submit", async e => {
   e.preventDefault();
 
-  const amount = Number($('formAmount').value);
-
-  if (!Number.isFinite(amount) || amount <= 0) {
-    toast('Nominal harus lebih dari nol.');
+  if (!activeRoom) {
+    toast("Ruang aktif tidak ditemukan.");
     return;
   }
 
-  const previous = editingId
-    ? transactions.find(t => t.id === editingId)
-    : null;
+  const role = activeRoom.role;
 
-  const data = {
-    id: editingId || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    type: $('formType').value,
-    amount,
-    note: $('formNote').value.trim(),
-    category: $('formCategory').value,
-    date: $('formDate').value,
-
-    // Waktu dan pembuat asli tidak berubah saat transaksi diedit.
-    createdAt: previous?.createdAt || new Date().toISOString(),
-
-    createdByName: previous?.createdByName ||
-      (editingId
-        ? 'Tidak tercatat'
-        : ($('profileName').textContent.trim() || 'Pengguna Duitku'))
-  };
-
-  if (!data.note || !data.date) {
-    toast('Lengkapi semua data transaksi.');
+  if (role === "viewer") {
+    toast("Viewer tidak memiliki izin untuk mengirim transaksi.");
     return;
   }
 
-  if (editingId) {
-    transactions = transactions.map(t =>
-      t.id === editingId ? data : t
-    );
-  } else {
-    transactions.push(data);
+  const nominal = Number($("formAmount").value);
+  const kategori = $("formCategory").value.trim();
+  const keterangan = $("formNote").value.trim();
+  const jenis = $("formType").value === "income"
+    ? "pemasukan"
+    : "pengeluaran";
+
+  if (!Number.isSafeInteger(nominal) || nominal <= 0) {
+    toast("Nominal harus berupa bilangan bulat positif.");
+    return;
   }
 
-  save();
-  closeModal();
-  renderAll();
+  if (!kategori || !keterangan) {
+    toast("Kategori dan keterangan wajib diisi.");
+    return;
+  }
 
-  toast(
-    editingId
-      ? 'Transaksi berhasil diperbarui.'
-      : 'Transaksi berhasil disimpan.'
-  );
+  const submitButton =
+    $("transactionForm").querySelector('button[type="submit"]');
+
+  const originalText = submitButton.textContent;
+
+  submitButton.disabled = true;
+  submitButton.textContent = "Mengirim...";
+
+  try {
+    const payload = {
+      roomId: activeRoom.roomId,
+      jenis,
+      nominal,
+      kategori,
+      keterangan
+    };
+
+    if (role === "editor") {
+      const request = await DuitkuAPI.submitTransactionRequest(
+        payload
+      );
+
+      closeModal();
+
+      toast(
+        `Pengajuan berhasil dikirim. ID: ${request.requestId}`
+      );
+
+    } else if (
+      role === "admin" ||
+      role === "developer"
+    ) {
+      payload.requestId =
+        typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `req_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+      await DuitkuAPI.createTransaction(payload);
+
+      closeModal();
+
+      toast("Transaksi berhasil disimpan.");
+
+    } else {
+      throw new Error("Role akun tidak memiliki izin transaksi.");
+    }
+
+    await loadRoomData(activeRoom.roomId);
+
+  } catch (error) {
+    console.error("Gagal mengirim transaksi:", error);
+    toast(error.message || "Transaksi gagal dikirim.");
+
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = originalText;
+  }
 });
+
+  
   document.addEventListener('click',e=>{const edit=e.target.closest('[data-edit]'),del=e.target.closest('[data-delete]');if(edit)openModal('income',edit.dataset.edit);if(del){const t=transactions.find(x=>x.id===del.dataset.delete);if(t&&confirm(`Hapus transaksi “${t.note}”?`)){transactions=transactions.filter(x=>x.id!==t.id);save();renderAll();toast('Transaksi dihapus.')}}});
   ['transactionSearch','transactionType'].forEach(id=>$(id).addEventListener('input',renderTransactions));['statsFrom','statsTo'].forEach(id => {
   $(id).addEventListener('change', renderStats);
