@@ -46,6 +46,10 @@ let activeRoom = null;
 let activeSpace = null;
 let editingId = null;
 let transactions = [];
+
+let roomSummary = null;
+let roomLoading = false;
+
 let savingsPlans = [];
 let savingsHistory = [];
 
@@ -115,10 +119,9 @@ function closeResetSpaceModal() {
 }
 
 function openResetSpaceModal() {
-  $('resetSpaceDescription').textContent =
-    `Seluruh transaksi, rencana tabungan, riwayat tabungan, dan rencana selesai di ${labels[activeSpace]} akan dihapus permanen. Ruang lainnya tidak akan terpengaruh.`;
-
-  $('resetSpaceModal').hidden = false;
+  toast(
+    "Reset ruang belum tersedia selama integrasi Google Sheets."
+  );
 }
 
 function resetActiveSpace() {
@@ -272,9 +275,14 @@ function setSpace(roomId) {
     );
   } catch {}
 
-  load();
-  loadSavings();
-  renderAll();
+transactions = [];
+roomSummary = null;
+roomLoading = true;
+
+loadSavings();
+renderAll();
+
+loadRoomData(room.roomId);
 
   const main = document.querySelector("main");
   main.classList.remove("room-changing");
@@ -285,6 +293,85 @@ function setSpace(roomId) {
     main.classList.remove("room-changing");
   }, 350);
 }
+  
+async function loadRoomData(roomId) {
+  try {
+    const [summary, firstPage] = await Promise.all([
+      DuitkuAPI.getSummary(roomId),
+      DuitkuAPI.listTransactions(roomId, 100, 0)
+    ]);
+
+    let allTransactions = [
+      ...(firstPage.transactions || [])
+    ];
+
+    let page = firstPage;
+    let offset = Number(page.offset || 0) +
+      Number(page.limit || 100);
+
+    // Ambil halaman berikutnya jika masih ada.
+    while (page.hasMore) {
+      page = await DuitkuAPI.listTransactions(
+        roomId,
+        100,
+        offset
+      );
+
+      allTransactions.push(
+        ...(page.transactions || [])
+      );
+
+      offset += Number(page.limit || 100);
+
+      if (!page.limit) break;
+    }
+
+    // Jangan timpa data jika pengguna sudah pindah ruang.
+    if (activeSpace !== roomId) return;
+
+    roomSummary = summary;
+
+    transactions = allTransactions.map(item => ({
+      id: item.transactionId,
+      type: item.jenis === "pemasukan"
+        ? "income"
+        : "expense",
+      amount: Number(item.nominal || 0),
+      note: item.keterangan || "",
+      category: item.kategori || "",
+      date: item.tanggal || "",
+      createdAt: item.createdAt || "",
+      createdByName: item.dicatatOlehNama || "Tidak tercatat",
+      createdByUid: item.dicatatOlehUid || "",
+      source: item.sumber || "",
+      requestId: item.requestId || ""
+    }));
+
+    roomLoading = false;
+
+    $("firebaseNote").textContent =
+      "● Data tersinkron dari Google Sheets";
+
+    renderAll();
+
+  } catch (error) {
+    console.error("Gagal memuat data ruang:", error);
+
+    if (activeSpace !== roomId) return;
+
+    roomLoading = false;
+    roomSummary = null;
+    transactions = [];
+
+    $("firebaseNote").textContent =
+      "● Gagal memuat data ruang";
+
+    renderAll();
+
+    toast("Gagal memuat data: " + error.message);
+  }
+}
+
 
 function renderRoomOptions() {
   const container = $("spaceOptions");
@@ -924,23 +1011,43 @@ document.addEventListener('keydown', e => {
   renderReport();
   renderSavings();
 }
-  function renderDashboard(){
-  const s=sums(transactions);
-  $('dashBalance').textContent = money(
-  s.income - s.expense - totalSavings()
-);
-  $('dashIncome').textContent=money(s.income);
-  $('dashExpense').textContent=money(s.expense);
-  $('dashIncomeCount').textContent=`${transactions.filter(t=>t.type==='income').length} transaksi`;
-  $('dashExpenseCount').textContent=`${transactions.filter(t=>t.type==='expense').length} transaksi`;
+  
+function renderDashboard() {
+  const summary = roomSummary;
 
-  const list=[...transactions]
-    .sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''))
-    .slice(0,5);
+  $("dashBalance").textContent = roomLoading
+    ? "Memuat..."
+    : money(summary?.saldoSaatIni || 0);
 
-  $('recentTransactions').innerHTML=list.map(t=>rowHTML(t,false)).join('');
-  $('recentEmpty').hidden = transactions.length > 0;
+  $("dashIncome").textContent = roomLoading
+    ? "Memuat..."
+    : money(summary?.totalPemasukan || 0);
+
+  $("dashExpense").textContent = roomLoading
+    ? "Memuat..."
+    : money(summary?.totalPengeluaran || 0);
+
+  $("dashIncomeCount").textContent = roomLoading
+    ? "Memuat..."
+    : `${summary?.jumlahPemasukan || 0} transaksi`;
+
+  $("dashExpenseCount").textContent = roomLoading
+    ? "Memuat..."
+    : `${summary?.jumlahPengeluaran || 0} transaksi`;
+
+  const list = [...transactions]
+    .sort((a, b) =>
+      (b.createdAt || "").localeCompare(a.createdAt || "")
+    )
+    .slice(0, 5);
+
+  $("recentTransactions").innerHTML =
+    list.map(t => rowHTML(t, false)).join("");
+
+  $("recentEmpty").hidden =
+    roomLoading || transactions.length > 0;
 }
+
   function rowHTML(t,actions=true){return `<div class="transaction-item"><span class="tx-icon ${t.type}">${t.type==='income'?'↙':'↗'}</span><span class="tx-info"><b>${esc(t.note)}</b><small>${esc(t.category)} · ${formatDate(t.date)}</small></span><strong class="amount ${t.type}">${t.type==='income'?'+':'−'} ${money(t.amount)}</strong>${actions?`<span class="tx-actions"><button data-edit="${t.id}" title="Edit">✎</button><button data-delete="${t.id}" title="Hapus">×</button></span>`:''}</div>`}
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function formatDate(d) {
@@ -968,20 +1075,25 @@ function formatTime(value) {
 function creatorName(t) {
   return t.createdByName || 'Tidak tercatat';
 }
-  function renderTransactions() {
-  const q = $('transactionSearch').value.toLowerCase();
-  const type = $('transactionType').value;
+  
+function renderTransactions() {
+  const q = $("transactionSearch").value.toLowerCase();
+  const type = $("transactionType").value;
 
   const list = [...transactions]
     .filter(t =>
-      (type === 'all' || t.type === type) &&
-      (`${t.note} ${t.category} ${creatorName(t)}`).toLowerCase().includes(q)
+      (type === "all" || t.type === type) &&
+      (
+        `${t.note} ${t.category} ${creatorName(t)}`
+      ).toLowerCase().includes(q)
     )
-    .sort((a,b) =>
-      (b.createdAt || b.date).localeCompare(a.createdAt || a.date)
+    .sort((a, b) =>
+      (b.createdAt || b.date).localeCompare(
+        a.createdAt || a.date
+      )
     );
 
-  $('transactionRows').innerHTML = list.map(t => `
+  $("transactionRows").innerHTML = list.map(t => `
     <tr>
       <td>${formatDate(t.date)}</td>
       <td>${formatTime(t.createdAt)}</td>
@@ -989,23 +1101,24 @@ function creatorName(t) {
       <td>${esc(t.category)}</td>
       <td>
         <span class="pill ${t.type}">
-          ${t.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+          ${t.type === "income"
+            ? "Pemasukan"
+            : "Pengeluaran"}
         </span>
       </td>
       <td class="amount ${t.type}">
-        ${t.type === 'income' ? '+' : '−'} ${money(t.amount)}
+        ${t.type === "income" ? "+" : "−"}
+        ${money(t.amount)}
       </td>
       <td>${esc(creatorName(t))}</td>
-      <td>
-        <button class="table-action" data-edit="${t.id}">Edit</button>
-        <button class="table-action danger" data-delete="${t.id}">Hapus</button>
-      </td>
+      <td>—</td>
     </tr>
-  `).join('');
+  `).join("");
 
-  // Pesan kosong hanya muncul jika ruang belum punya riwayat sama sekali.
-  $('transactionEmpty').hidden = transactions.length > 0;
+  $("transactionEmpty").hidden =
+    roomLoading || transactions.length > 0;
 }
+
   function renderStats() {
   const from = $('statsFrom').value;
   const to = $('statsTo').value;
@@ -1103,7 +1216,11 @@ function creatorName(t) {
 
   $('reportEmpty').hidden = transactions.length > 0;
 }
-  function openModal(type='income',id=null){editingId=id;const t=id?transactions.find(x=>x.id===id):null;$('modalTitle').textContent=t?'Edit transaksi':'Tambah transaksi';$('formType').value=t?.type||type;$('formAmount').value=t?.amount||'';$('formNote').value=t?.note||'';$('formCategory').value=t?.category||'Makanan';$('formDate').value=t?.date||today();$('transactionModal').hidden=false;$('formAmount').focus()}
+function openModal() {
+  toast(
+    "Fitur pencatatan transaksi sedang dalam tahap integrasi."
+  );
+}
   function closeModal(){$('transactionModal').hidden=true;editingId=null;$('transactionForm').reset()}
   $('newTransaction').addEventListener('click',()=>openModal());document.querySelectorAll('[data-add]').forEach(b=>b.addEventListener('click',()=>openModal(b.dataset.add)));$('closeModal').addEventListener('click',closeModal);$('cancelModal').addEventListener('click',closeModal);$('transactionModal').addEventListener('click',e=>{if(e.target===$('transactionModal'))closeModal()});
   $('transactionForm').addEventListener('submit', e => {
