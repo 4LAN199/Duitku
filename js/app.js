@@ -1905,4 +1905,4 @@ await loadRequestHistory(roomId);
 ["requestHistorySearch", "requestHistoryStatus"].forEach(id => {
   $(id).addEventListener("input", renderRequestHistory);
 });
-}); // Penutup DOMContentLoaded
+ // Penutup DOMContentLoaded
