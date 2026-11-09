@@ -524,14 +524,6 @@ renderAll();
 loadRoomData(room.roomId);
 loadPendingRequests(room.roomId);
 loadRequestHistory(room.roomId);
-
-  const main = document.querySelector("main");
-  main.classList.remove("room-changing");
-  void main.offsetWidth;
-  main.classList.add("room-changing");
-setTimeout(() => {
-    main.classList.remove("room-changing");
-  }, 350);
   
 async function loadRoomData(roomId) {
   try {
