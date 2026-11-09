@@ -428,10 +428,6 @@ function renderRequestHistory() {
   void main.offsetWidth;
   main.classList.add("room-changing");
 
-  setTimeout(() => {
-    main.classList.remove("room-changing");
-  }, 350);
-}
 async function loadPendingRequests(roomId) {
   const panel = $("requestPanel");
 
