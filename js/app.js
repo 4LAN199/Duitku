@@ -363,104 +363,7 @@ function renderRequestHistory() {
 
   $("requestHistoryEmpty").hidden = filtered.length > 0;
 }
-function setSpace(roomId) {
-  const room = availableRooms.find(
-    item => item.roomId === roomId
-  );
-
-  if (!room) {
-    toast("Ruang tidak ditemukan atau tidak dapat diakses.");
-    return;
-  }
-
-  activeRoom = room;
-  const canTransact = room.role !== "viewer";
-
-$("newTransaction").hidden = !canTransact;
-
-document.querySelectorAll("[data-add]").forEach(button => {
-  button.hidden = !canTransact;
-});
-  activeSpace = room.roomId;
-
-  $("activeSpaceName").textContent = room.name;
-  $("crumbSpaceName").textContent = room.name;
-  $("welcomeSpaceName").textContent = room.name;
-
-  document.querySelectorAll("[data-space]").forEach(option => {
-    option.classList.toggle(
-      "selected",
-      option.dataset.space === room.roomId
-    );
-  });
-
-  try {
-    localStorage.setItem(
-      "duitku-active-space-preview",
-      room.roomId
-    );
-  } catch {}
-
-transactions = [];
-roomSummary = null;
-roomLoading = true;
-
-loadSavings();
-renderAll();
-
-loadRoomData(room.roomId);
-loadPendingRequests(room.roomId);
-loadRequestHistory(room.roomId);
-async function loadPendingRequests(roomId) {
-  const panel = $("requestPanel");
-
-  const room = availableRooms.find(
-    item => item.roomId === roomId
-  );
-
-  const canApprove = room &&
-    ["admin", "developer"].includes(room.role);
-
-  panel.hidden = !canApprove;
-
-  if (!canApprove) {
-    pendingRequests = [];
-    return;
-  }
-
-  $("requestRows").innerHTML = `
-    <tr>
-      <td colspan="7">Memuat pengajuan...</td>
-    </tr>
-  `;
-  $("requestEmpty").hidden = true;
-
-  try {
-    const requests =
-      await DuitkuAPI.listTransactionRequests(roomId);
-
-    if (activeSpace !== roomId) return;
-
-    pendingRequests = requests;
-    renderPendingRequests();
-
-  } catch (error) {
-    console.error("Gagal memuat pengajuan:", error);
-
-    if (activeSpace !== roomId) return;
-
-    pendingRequests = [];
-    $("requestRows").innerHTML = `
-      <tr>
-        <td colspan="7">Gagal memuat pengajuan.</td>
-      </tr>
-    `;
-
-    toast("Gagal memuat pengajuan: " + error.message);
-  }
-}
-
-function renderPendingRequests() {
+  function renderPendingRequests() {
   const rows = $("requestRows");
 
   rows.innerHTML = pendingRequests.map(request => {
@@ -529,6 +432,110 @@ function renderPendingRequests() {
     main.classList.remove("room-changing");
   }, 350);
 }
+async function loadPendingRequests(roomId) {
+  const panel = $("requestPanel");
+
+  const room = availableRooms.find(
+    item => item.roomId === roomId
+  );
+
+  const canApprove = room &&
+    ["admin", "developer"].includes(room.role);
+
+  panel.hidden = !canApprove;
+
+  if (!canApprove) {
+    pendingRequests = [];
+    return;
+  }
+
+  $("requestRows").innerHTML = `
+    <tr>
+      <td colspan="7">Memuat pengajuan...</td>
+    </tr>
+  `;
+  $("requestEmpty").hidden = true;
+
+  try {
+    const requests =
+      await DuitkuAPI.listTransactionRequests(roomId);
+
+    if (activeSpace !== roomId) return;
+
+    pendingRequests = requests;
+    renderPendingRequests();
+
+  } catch (error) {
+    console.error("Gagal memuat pengajuan:", error);
+
+    if (activeSpace !== roomId) return;
+
+    pendingRequests = [];
+    $("requestRows").innerHTML = `
+      <tr>
+        <td colspan="7">Gagal memuat pengajuan.</td>
+      </tr>
+    `;
+
+    toast("Gagal memuat pengajuan: " + error.message);
+  }
+}                          
+function setSpace(roomId) {
+  const room = availableRooms.find(
+    item => item.roomId === roomId
+  );
+
+  if (!room) {
+    toast("Ruang tidak ditemukan atau tidak dapat diakses.");
+    return;
+  }
+
+  activeRoom = room;
+  const canTransact = room.role !== "viewer";
+
+$("newTransaction").hidden = !canTransact;
+
+document.querySelectorAll("[data-add]").forEach(button => {
+  button.hidden = !canTransact;
+});
+  activeSpace = room.roomId;
+
+  $("activeSpaceName").textContent = room.name;
+  $("crumbSpaceName").textContent = room.name;
+  $("welcomeSpaceName").textContent = room.name;
+
+  document.querySelectorAll("[data-space]").forEach(option => {
+    option.classList.toggle(
+      "selected",
+      option.dataset.space === room.roomId
+    );
+  });
+
+  try {
+    localStorage.setItem(
+      "duitku-active-space-preview",
+      room.roomId
+    );
+  } catch {}
+
+transactions = [];
+roomSummary = null;
+roomLoading = true;
+
+loadSavings();
+renderAll();
+
+loadRoomData(room.roomId);
+loadPendingRequests(room.roomId);
+loadRequestHistory(room.roomId);
+
+  const main = document.querySelector("main");
+  main.classList.remove("room-changing");
+  void main.offsetWidth;
+  main.classList.add("room-changing");
+setTimeout(() => {
+    main.classList.remove("room-changing");
+  }, 350);
   
 async function loadRoomData(roomId) {
   try {
