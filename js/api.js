@@ -47,6 +47,13 @@ window.DuitkuAPI = {
 
     return result.summary;
   },
+  async listRequestHistory(roomId) {
+  const result = await this.request("listRequestHistory", {
+    roomId
+  });
+
+  return result.history || [];
+},
 
   async listTransactions(roomId, limit = 100, offset = 0) {
     const result = await this.request("listTransactions", {
