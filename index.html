@@ -196,17 +196,16 @@
 
   <div class="table-wrap">
     <table>
-      <thead>
-        <tr>
-          <th>Tanggal</th>
-          <th>Pengaju</th>
-          <th>Keterangan</th>
-          <th>Kategori</th>
-          <th>Jenis</th>
-          <th>Nominal</th>
-          <th>Aksi</th>
-        </tr>
-      </thead>
+     <thead>
+  <tr>
+    <th>Tanggal</th>
+    <th>Pengaju</th>
+    <th>Jenis Pengajuan</th>
+    <th>Detail</th>
+    <th>Nilai</th>
+    <th>Aksi</th>
+  </tr>
+</thead>
       <tbody id="requestRows"></tbody>
     </table>
   </div>
@@ -256,7 +255,7 @@
     <div>
       <small class="eyebrow">ARSIP PENGAJUAN</small>
       <h1>Riwayat Pengajuan</h1>
-      <p>Daftar pengajuan transaksi yang sudah disetujui atau ditolak.</p>
+      <p>Daftar seluruh pengajuan yang sudah disetujui atau ditolak.</p>
     </div>
 
     <button class="secondary" id="refreshRequestHistory" type="button">
@@ -282,18 +281,19 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr>
-            <th>Tanggal Pengajuan</th>
-            <th>Pengaju</th>
-            <th>Keterangan</th>
-            <th>Jenis</th>
-            <th>Nominal</th>
-            <th>Status</th>
-            <th>Diputuskan oleh</th>
-            <th>Tanggal Keputusan</th>
-            <th>Alasan Penolakan</th>
-          </tr>
-        </thead>
+          <thead>
+  <tr>
+    <th>Tanggal Pengajuan</th>
+    <th>Pengaju</th>
+    <th>Jenis Pengajuan</th>
+    <th>Detail</th>
+    <th>Nilai</th>
+    <th>Status</th>
+    <th>Diputuskan oleh</th>
+    <th>Tanggal Keputusan</th>
+    <th>Alasan Penolakan</th>
+  </tr>
+</thead>
         <tbody id="requestHistoryRows"></tbody>
       </table>
     </div>
