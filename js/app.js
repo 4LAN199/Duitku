@@ -1691,11 +1691,35 @@ $("requestPanel").addEventListener("click", async e => {
   let alasanPenolakan = "";
 
   if (action === "approve") {
-    const confirmed = confirm(
-      `Setujui pengajuan ${request.jenis} sebesar ${money(request.nominal)} dari ${request.pemohonNama || "Editor"}?`
-    );
+  const actionLabels = {
+    transaksi: "transaksi",
+    buat_rencana: "pembuatan rencana tabungan",
+    edit_rencana: "perubahan rencana tabungan",
+    hapus_rencana: "penghapusan rencana tabungan",
+    setoran: "setoran tabungan",
+    penarikan: "penarikan tabungan"
+  };
 
-    if (!confirmed) return;
+  const actionLabel =
+    actionLabels[request.jenisAksi || "transaksi"] || "pengajuan";
+
+  const detail =
+    request.namaTabungan ||
+    request.keterangan ||
+    request.jenis ||
+    "-";
+
+  const value = request.nominal != null
+    ? money(request.nominal)
+    : request.target != null
+      ? `Target ${money(request.target)}`
+      : "tanpa nominal";
+
+  const confirmed = confirm(
+    `Setujui ${actionLabel} "${detail}" dengan nilai ${value} dari ${request.pemohonNama || "Editor"}?`
+  );
+
+  if (!confirmed) return;
 
   } else if (action === "reject") {
     const reason = prompt(
@@ -1752,11 +1776,14 @@ $("requestPanel").addEventListener("click", async e => {
         : "Pengajuan berhasil ditolak.")
     );
 
-    // Perbarui saldo dan transaksi setelah keputusan.
-    await loadRoomData(roomId);
+    // Perbarui data ruang setelah keputusan.
+await loadRoomData(roomId);
 
-    // Sinkronkan daftar pengajuan dari Firestore.
-    await loadPendingRequests(roomId);
+// Sinkronkan pengajuan tertunda.
+await loadPendingRequests(roomId);
+
+// Perbarui arsip pengajuan yang sudah diputuskan.
+await loadRequestHistory(roomId);
 
   } catch (error) {
     console.error("Gagal memproses pengajuan:", error);
