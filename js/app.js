@@ -69,46 +69,52 @@ let completedSavings = [];
 const completedSavingsKey = () =>
   `duitku-v2-savings-completed-${activeSpace}`;
 
-function loadSavings() {
-  try {
-    savingsPlans = JSON.parse(
-      localStorage.getItem(savingsPlansKey()) || '[]'
-    );
-    savingsHistory = JSON.parse(
-      localStorage.getItem(savingsHistoryKey()) || '[]'
-    );
-    completedSavings = JSON.parse(
-      localStorage.getItem(completedSavingsKey()) || '[]'
-    );
 
-    if (!Array.isArray(savingsPlans)) savingsPlans = [];
-    if (!Array.isArray(savingsHistory)) savingsHistory = [];
-    if (!Array.isArray(completedSavings)) completedSavings = [];
-  } catch {
+async function loadSavings(roomId) {
+  try {
+    const result = await DuitkuAPI.listSavingsPlans(roomId);
+
+    if (activeSpace !== roomId) return;
+
+    savingsPlans = (result.plans || []).map(plan => ({
+      id: plan.planId,
+      name: plan.nama,
+      note: plan.keterangan || "",
+      target: Number(plan.target || 0),
+      balance: Number(plan.saldo || 0),
+      started: plan.status === "berjalan",
+      createdAt: plan.createdAt || "",
+      createdByName: plan.dibuatOlehNama || ""
+    }));
+
+    savingsHistory = (result.history || []).map(item => ({
+      id: item.historyId,
+      planName: item.namaTabungan || "",
+      activity: item.aktivitas || "",
+      amount: Number(item.nominal || 0),
+      date: item.tanggal || "",
+      createdAt: item.createdAt || "",
+      createdByName: item.olehNama || ""
+    }));
+
+    completedSavings = [];
+
+    renderSavings();
+
+  } catch (error) {
+    console.error("Gagal memuat tabungan:", error);
+
+    if (activeSpace !== roomId) return;
+
     savingsPlans = [];
     savingsHistory = [];
     completedSavings = [];
+
+    renderSavings();
+    toast("Gagal memuat tabungan: " + error.message);
   }
 }
 
-function saveSavings() {
-  try {
-    localStorage.setItem(
-      savingsPlansKey(),
-      JSON.stringify(savingsPlans)
-    );
-    localStorage.setItem(
-      savingsHistoryKey(),
-      JSON.stringify(savingsHistory)
-    );
-    localStorage.setItem(
-      completedSavingsKey(),
-      JSON.stringify(completedSavings)
-    );
-  } catch {
-    toast('Penyimpanan browser penuh atau tidak tersedia.');
-  }
-}
 
 function totalSavings() {
   return savingsPlans.reduce(
@@ -519,10 +525,14 @@ function setSpace(roomId) {
   roomSummary = null;
   roomLoading = true;
 
-  loadSavings();
-  renderAll();
+  savingsPlans = [];
+savingsHistory = [];
+completedSavings = [];
 
-  loadRoomData(room.roomId);
+renderAll();
+
+loadSavings(room.roomId);
+loadRoomData(room.roomId);
   loadPendingRequests(room.roomId);
   loadRequestHistory(room.roomId);
 
