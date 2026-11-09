@@ -515,9 +515,21 @@ function setSpace(roomId) {
 
   activeSpace = room.roomId;
 
-  $("activeSpaceName").textContent = room.name;
-  $("crumbSpaceName").textContent = room.name;
-  $("welcomeSpaceName").textContent = room.name;
+ const activeSpaceName = $("activeSpaceName");
+const crumbSpaceName = $("crumbSpaceName");
+const welcomeSpaceName = $("welcomeSpaceName");
+
+if (activeSpaceName) {
+  activeSpaceName.textContent = room.name;
+}
+
+if (crumbSpaceName) {
+  crumbSpaceName.textContent = room.name;
+}
+
+if (welcomeSpaceName) {
+  welcomeSpaceName.textContent = room.name;
+}
 
   document.querySelectorAll("[data-space]").forEach(option => {
     option.classList.toggle(
