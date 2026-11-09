@@ -58,6 +58,7 @@
 <nav>
   <a class="active" href="#dashboard" data-nav="dashboard">▦　Dashboard</a>
   <a href="#transactions" data-nav="transactions">⇄　Transaksi</a>
+  <a href="#request-history" data-nav="request-history">◷　Riwayat Pengajuan</a>
   <a href="#savings" data-nav="savings">▣　Tabungan</a>
   <a href="#statistics" data-nav="statistics">◔　Statistik</a>
   <a href="#reports" data-nav="reports">▤　Laporan</a>
@@ -249,7 +250,61 @@
     </div>
   </article>
 </section>
+<!-- RIWAYAT PENGAJUAN -->
+<section class="page-section" id="page-request-history" hidden>
+  <div class="section-heading">
+    <div>
+      <small class="eyebrow">ARSIP PENGAJUAN</small>
+      <h1>Riwayat Pengajuan</h1>
+      <p>Daftar pengajuan transaksi yang sudah disetujui atau ditolak.</p>
+    </div>
 
+    <button class="secondary" id="refreshRequestHistory" type="button">
+      ↻ Muat ulang
+    </button>
+  </div>
+
+  <article class="panel request-history-panel">
+    <div class="toolbar">
+      <input
+        id="requestHistorySearch"
+        type="search"
+        placeholder="Cari nama, keterangan, atau nominal..."
+      >
+
+      <select id="requestHistoryStatus">
+        <option value="all">Semua status</option>
+        <option value="disetujui">Disetujui</option>
+        <option value="ditolak">Ditolak</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tanggal Pengajuan</th>
+            <th>Pengaju</th>
+            <th>Keterangan</th>
+            <th>Jenis</th>
+            <th>Nominal</th>
+            <th>Status</th>
+            <th>Diputuskan oleh</th>
+            <th>Tanggal Keputusan</th>
+            <th>Alasan Penolakan</th>
+          </tr>
+        </thead>
+        <tbody id="requestHistoryRows"></tbody>
+      </table>
+    </div>
+
+    <div class="empty compact" id="requestHistoryEmpty" hidden>
+      <b>◷</b>
+      <strong>Belum ada riwayat pengajuan</strong>
+      <p>Pengajuan yang sudah diputuskan akan muncul di sini.</p>
+    </div>
+  </article>
+</section>
 <!-- TABUNGAN -->
 <section class="page-section" id="page-savings" hidden>
   <div class="section-heading">
