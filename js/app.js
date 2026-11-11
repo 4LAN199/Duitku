@@ -1386,27 +1386,35 @@ function renderTransactions() {
       )
     );
 
-  $("transactionRows").innerHTML = list.map(t => `
-    <tr>
-      <td>${formatDate(t.date)}</td>
-      <td>${formatTime(t.createdAt)}</td>
-      <td>${esc(t.note)}</td>
-      <td>${esc(t.category)}</td>
-      <td>
-        <span class="pill ${t.type}">
-          ${t.type === "income"
-            ? "Pemasukan"
-            : "Pengeluaran"}
-        </span>
-      </td>
-      <td class="amount ${t.type}">
-        ${t.type === "income" ? "+" : "−"}
-        ${money(t.amount)}
-      </td>
-      <td>${esc(creatorName(t))}</td>
-      <td>—</td>
-    </tr>
-  `).join("");
+
+$("transactionRows").innerHTML = list.map(t => `
+  <tr>
+    <td>${formatDate(t.date)}</td>
+    <td>${formatTime(t.createdAt)}</td>
+    <td>${esc(t.note)}</td>
+    <td>${esc(t.category)}</td>
+    <td>
+      <span class="pill ${t.type}">
+        ${t.type === "income" ? "Pemasukan" : "Pengeluaran"}
+      </span>
+    </td>
+    <td class="amount ${t.type}">
+      ${t.type === "income" ? "+" : "−"} ${money(t.amount)}
+    </td>
+    <td>${esc(creatorName(t))}</td>
+    <td>
+      ${["admin", "developer"].includes(activeRoom?.role) ? `
+        <button
+          type="button"
+          class="table-action"
+          data-edit="${esc(t.id)}"
+          title="Edit transaksi"
+        >✎ Edit</button>
+      ` : "—"}
+    </td>
+  </tr>
+`).join("");
+
 
   $("transactionEmpty").hidden =
     roomLoading || transactions.length > 0;
