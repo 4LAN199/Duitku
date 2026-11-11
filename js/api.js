@@ -76,6 +76,10 @@ window.DuitkuAPI = {
     const result = await this.request("createTransaction", payload);
     return result.result;
   },
+  async updateTransaction(payload) {
+  const result = await this.request("updateTransaction", payload);
+  return result.result;
+},
 
   async submitTransactionRequest(payload) {
     const result = await this.request(
